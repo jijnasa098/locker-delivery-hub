@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -25,12 +26,17 @@ interface Staff {
 }
 
 interface LockerSettings {
+  systems: Array<{
+    id: number;
+    name: string;
+    location: string;
+    lockers: {
+      small: number;
+      medium: number;
+      large: number;
+    };
+  }>;
   totalLockers: number;
-  lockSizes: {
-    small: number;
-    medium: number;
-    large: number;
-  };
 }
 
 interface RegistrationData {
@@ -39,6 +45,14 @@ interface RegistrationData {
   communityId: string;
   userType: string;
   lockerSettings?: LockerSettings;
+}
+
+// Locker interface
+interface Locker {
+  id: number;
+  systemId: number; // Added to track which system it belongs to
+  size: 'small' | 'medium' | 'large';
+  status: 'available' | 'occupied' | 'maintenance';
 }
 
 const CommunityManager = () => {
@@ -54,6 +68,21 @@ const CommunityManager = () => {
     communityId: 'c1',
     communityName: 'Green Valley Apartments',
   });
+
+  // Lockers state - now with systemId
+  const [lockers, setLockers] = useState<Locker[]>([]);
+  
+  // Locker systems state
+  const [lockerSystems, setLockerSystems] = useState<Array<{
+    id: number;
+    name: string;
+    location: string;
+  }>>([
+    { id: 1, name: 'Main Building', location: 'Lobby' }
+  ]);
+  
+  // Currently selected locker system for viewing
+  const [selectedSystemId, setSelectedSystemId] = useState<number>(1);
 
   // Get registration data from localStorage if available
   useEffect(() => {
@@ -72,9 +101,25 @@ const CommunityManager = () => {
           });
           
           // If we have locker settings, create the lockers based on that
-          if (parsedData.lockerSettings) {
-            const newLockers = generateLockersFromSettings(parsedData.lockerSettings);
-            setLockers(newLockers);
+          if (parsedData.lockerSettings && parsedData.lockerSettings.systems) {
+            // Set the locker systems
+            setLockerSystems(parsedData.lockerSettings.systems.map(system => ({
+              id: system.id,
+              name: system.name,
+              location: system.location
+            })));
+            
+            // Set the default selected system to the first one
+            if (parsedData.lockerSettings.systems.length > 0) {
+              setSelectedSystemId(parsedData.lockerSettings.systems[0].id);
+            }
+            
+            // Generate all lockers from all systems
+            const generatedLockers = generateLockersFromSettings(parsedData.lockerSettings);
+            setLockers(generatedLockers);
+          } else {
+            // Fall back to initial lockers if no settings
+            setLockers([...initialLockers]);
           }
         }
       } catch (error) {
@@ -84,42 +129,50 @@ const CommunityManager = () => {
   }, []);
   
   // Generate lockers based on registration settings
-  const generateLockersFromSettings = (settings: LockerSettings) => {
-    const newLockers = [];
-    let lockerId = 1;
+  const generateLockersFromSettings = (settings: LockerSettings): Locker[] => {
+    const newLockers: Locker[] = [];
+    let globalLockerId = 1;
     
-    // Add small lockers
-    for (let i = 0; i < settings.lockSizes.small; i++) {
-      newLockers.push({
-        id: lockerId++,
-        size: 'small' as const,
-        status: 'available' as const
-      });
-    }
-    
-    // Add medium lockers
-    for (let i = 0; i < settings.lockSizes.medium; i++) {
-      newLockers.push({
-        id: lockerId++,
-        size: 'medium' as const,
-        status: 'available' as const
-      });
-    }
-    
-    // Add large lockers
-    for (let i = 0; i < settings.lockSizes.large; i++) {
-      newLockers.push({
-        id: lockerId++,
-        size: 'large' as const,
-        status: 'available' as const
-      });
-    }
+    // For each locker system
+    settings.systems.forEach(system => {
+      // Add small lockers
+      for (let i = 0; i < system.lockers.small; i++) {
+        newLockers.push({
+          id: globalLockerId++,
+          systemId: system.id,
+          size: 'small',
+          status: 'available'
+        });
+      }
+      
+      // Add medium lockers
+      for (let i = 0; i < system.lockers.medium; i++) {
+        newLockers.push({
+          id: globalLockerId++,
+          systemId: system.id,
+          size: 'medium',
+          status: 'available'
+        });
+      }
+      
+      // Add large lockers
+      for (let i = 0; i < system.lockers.large; i++) {
+        newLockers.push({
+          id: globalLockerId++,
+          systemId: system.id,
+          size: 'large',
+          status: 'available'
+        });
+      }
+    });
     
     return newLockers;
   };
   
+  // Filter lockers by selected system
+  const filteredLockers = lockers.filter(locker => locker.systemId === selectedSystemId);
+  
   // States
-  const [lockers, setLockers] = useState<typeof initialLockers>([...initialLockers]);
   const [staffMembers, setStaffMembers] = useState<Staff[]>([
     { 
       id: 'staff1', 
@@ -149,11 +202,12 @@ const CommunityManager = () => {
     email: '',
     phone: '',
     username: '',
-    communityId: manager.communityId, // Default to manager's community ID
+    communityId: manager.communityId,
   });
   const [lockerFormData, setLockerFormData] = useState({
     count: 1,
     size: 'small' as 'small' | 'medium' | 'large',
+    systemId: selectedSystemId,
   });
 
   const handleLogout = () => {
@@ -220,20 +274,25 @@ const CommunityManager = () => {
   };
 
   const handleAddLockers = () => {
+    // Get the current highest locker ID
     const currentHighestId = lockers.length > 0 ? Math.max(...lockers.map(locker => locker.id)) : 0;
+    
+    // Create new lockers with the selected system ID
     const newLockers = Array.from({ length: lockerFormData.count }, (_, index) => ({
       id: currentHighestId + index + 1,
+      systemId: lockerFormData.systemId,
       size: lockerFormData.size,
       status: 'available' as const
     }));
 
+    // Add the new lockers to the existing ones
     setLockers([...lockers, ...newLockers]);
     setShowAddLockerDialog(false);
-    setLockerFormData({ count: 1, size: 'small' });
+    setLockerFormData({ count: 1, size: 'small', systemId: selectedSystemId });
     
     toast({
       title: "Lockers Added",
-      description: `${lockerFormData.count} new ${lockerFormData.size} lockers have been added.`,
+      description: `${lockerFormData.count} new ${lockerFormData.size} lockers have been added to ${lockerSystems.find(s => s.id === lockerFormData.systemId)?.name}.`,
     });
   };
 
@@ -243,6 +302,19 @@ const CommunityManager = () => {
       title: "Locker Removed",
       description: `Locker #${lockerId} has been removed.`,
     });
+  };
+
+  // Get locker counts by system and size
+  const getLockerCounts = (systemId: number) => {
+    const systemLockers = lockers.filter(locker => locker.systemId === systemId);
+    return {
+      small: systemLockers.filter(locker => locker.size === 'small').length,
+      medium: systemLockers.filter(locker => locker.size === 'medium').length,
+      large: systemLockers.filter(locker => locker.size === 'large').length,
+      total: systemLockers.length,
+      available: systemLockers.filter(locker => locker.status === 'available').length,
+      occupied: systemLockers.filter(locker => locker.status === 'occupied').length,
+    };
   };
 
   return (
@@ -266,6 +338,16 @@ const CommunityManager = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Locker Systems</CardTitle>
+              <CardDescription>Number of locker locations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">{lockerSystems.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
               <CardTitle className="text-lg">Total Lockers</CardTitle>
               <CardDescription>All lockers in the community</CardDescription>
             </CardHeader>
@@ -282,18 +364,6 @@ const CommunityManager = () => {
             <CardContent>
               <div className="text-3xl font-bold text-green-500">
                 {lockers.filter(locker => locker.status === 'available').length}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Occupied</CardTitle>
-              <CardDescription>Lockers in use</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-500">
-                {lockers.filter(locker => locker.status === 'occupied').length}
               </div>
             </CardContent>
           </Card>
@@ -320,7 +390,7 @@ const CommunityManager = () => {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Lockers</CardTitle>
+                    <CardTitle>Locker Systems</CardTitle>
                     <CardDescription>Manage all lockers in the community</CardDescription>
                   </div>
                   <Button onClick={() => setShowAddLockerDialog(true)}>
@@ -331,55 +401,97 @@ const CommunityManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {lockers.length > 0 ? (
-                    <LockerMap 
-                      lockers={lockers} 
-                      onLockerSelect={(id) => {
-                        const locker = lockers.find(l => l.id === id);
-                        if (locker && locker.status === 'available') {
-                          if (confirm(`Are you sure you want to remove locker #${id}?`)) {
-                            handleRemoveLocker(id);
-                          }
-                        } else {
-                          toast({
-                            title: "Cannot Remove",
-                            description: "You cannot remove an occupied locker.",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="text-center py-8">
-                      <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-xl font-medium mb-2">No Lockers</h3>
-                      <p className="text-muted-foreground mb-6">
-                        You haven't added any lockers yet.
-                      </p>
-                      <Button onClick={() => setShowAddLockerDialog(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Lockers
-                      </Button>
+                  {/* Locker System Selector */}
+                  <div className="mb-6">
+                    <Label htmlFor="systemSelector">Select Locker System:</Label>
+                    <div className="flex gap-4 flex-wrap mt-2">
+                      {lockerSystems.map(system => (
+                        <Card 
+                          key={system.id} 
+                          className={`cursor-pointer border transition-colors ${selectedSystemId === system.id ? 'border-primary bg-primary/10' : ''}`}
+                          onClick={() => setSelectedSystemId(system.id)}
+                        >
+                          <CardContent className="p-4">
+                            <h3 className="font-medium">{system.name}</h3>
+                            <p className="text-sm text-muted-foreground">{system.location}</p>
+                            <p className="text-sm mt-1">
+                              {getLockerCounts(system.id).total} lockers
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  )}
+                  </div>
                   
-                  {lockers.length > 0 && (
-                    <div className="bg-muted p-4 rounded-md">
-                      <h3 className="font-medium mb-2">Locker Distribution:</h3>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between">
-                          <span>Small Lockers:</span>
-                          <span>{lockers.filter(l => l.size === 'small').length}</span>
+                  {/* Selected System Details */}
+                  {selectedSystemId && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">
+                        {lockerSystems.find(s => s.id === selectedSystemId)?.name} Lockers
+                      </h3>
+                      
+                      {filteredLockers.length > 0 ? (
+                        <LockerMap 
+                          lockers={filteredLockers} 
+                          onLockerSelect={(id) => {
+                            const locker = lockers.find(l => l.id === id);
+                            if (locker && locker.status === 'available') {
+                              if (confirm(`Are you sure you want to remove locker #${id}?`)) {
+                                handleRemoveLocker(id);
+                              }
+                            } else {
+                              toast({
+                                title: "Cannot Remove",
+                                description: "You cannot remove an occupied locker.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="text-center py-8">
+                          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="text-xl font-medium mb-2">No Lockers</h3>
+                          <p className="text-muted-foreground mb-6">
+                            This locker system doesn't have any lockers yet.
+                          </p>
+                          <Button onClick={() => {
+                            setLockerFormData(prev => ({ ...prev, systemId: selectedSystemId }));
+                            setShowAddLockerDialog(true);
+                          }}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Lockers
+                          </Button>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Medium Lockers:</span>
-                          <span>{lockers.filter(l => l.size === 'medium').length}</span>
+                      )}
+                      
+                      {filteredLockers.length > 0 && (
+                        <div className="bg-muted p-4 rounded-md mt-4">
+                          <h3 className="font-medium mb-2">Locker Distribution:</h3>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex justify-between">
+                              <span>Small Lockers:</span>
+                              <span>{filteredLockers.filter(l => l.size === 'small').length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Medium Lockers:</span>
+                              <span>{filteredLockers.filter(l => l.size === 'medium').length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Large Lockers:</span>
+                              <span>{filteredLockers.filter(l => l.size === 'large').length}</span>
+                            </div>
+                            <div className="flex justify-between font-medium pt-2 border-t">
+                              <span>Available:</span>
+                              <span>{filteredLockers.filter(l => l.status === 'available').length}</span>
+                            </div>
+                            <div className="flex justify-between font-medium">
+                              <span>Occupied:</span>
+                              <span>{filteredLockers.filter(l => l.status === 'occupied').length}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Large Lockers:</span>
-                          <span>{lockers.filter(l => l.size === 'large').length}</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -531,6 +643,24 @@ const CommunityManager = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="systemId">Locker System</Label>
+              <Select 
+                value={lockerFormData.systemId.toString()}
+                onValueChange={(value) => setLockerFormData(prev => ({ ...prev, systemId: parseInt(value) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select locker system" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lockerSystems.map(system => (
+                    <SelectItem key={system.id} value={system.id.toString()}>
+                      {system.name} ({system.location})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="count">Number of Lockers</Label>
               <Input
