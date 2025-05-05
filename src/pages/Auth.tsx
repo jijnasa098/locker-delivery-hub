@@ -41,7 +41,7 @@ const Auth = () => {
     }));
   };
   
-  const handleLogin = (e) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -49,7 +49,7 @@ const Auth = () => {
     setTimeout(() => {
       const user = users.find(user => user.email === email);
       
-      if (user) {
+      if (user && communityId) { // Added check for communityId
         // In a real app, we would verify the password and communityId
         if (email === 'admin@example.com') {
           toast({
@@ -63,6 +63,12 @@ const Auth = () => {
             description: "You have been logged in as a community manager.",
           });
           navigate('/community-manager');
+        } else if (userType === 'staff') {
+          toast({
+            title: "Logged in as Staff",
+            description: "You have been logged in as a staff member.",
+          });
+          navigate('/community-manager'); // Staff currently goes to same page as manager
         } else {
           toast({
             title: "Login Successful",
@@ -73,7 +79,7 @@ const Auth = () => {
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid credentials. Please try again.",
+          description: "Invalid credentials or Community ID. Please try again.",
           variant: "destructive",
         });
       }
@@ -92,6 +98,7 @@ const Auth = () => {
       email,
       communityId,
       userType,
+      apartment: userType === 'resident' ? apartment : '',
       ...(userType === 'manager' && {
         lockerSettings: {
           totalLockers: parseInt(lockerCount) || 10,
@@ -108,6 +115,9 @@ const Auth = () => {
     
     // Mock registration - in a real app this would call an API
     setTimeout(() => {
+      // Store the registration data in localStorage so we can use it later
+      localStorage.setItem('registrationData', JSON.stringify(registrationData));
+      
       toast({
         title: "Registration Successful",
         description: userType === 'manager' 
@@ -115,7 +125,14 @@ const Auth = () => {
           : "Your account has been created. You can now log in.",
       });
       
-      setActiveTab('login');
+      // If they're registering as a manager, navigate them to the community manager page
+      if (userType === 'manager') {
+        navigate('/community-manager');
+      } else {
+        // Otherwise, just switch to login tab
+        setActiveTab('login');
+      }
+      
       setIsLoading(false);
     }, 1000);
   };
@@ -391,15 +408,28 @@ const Auth = () => {
                     </div>
                     
                     {userType === 'resident' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="apartment">Apartment/Room Number</Label>
-                        <Input 
-                          id="apartment" 
-                          placeholder="A201"
-                          value={apartment}
-                          onChange={(e) => setApartment(e.target.value)}
-                        />
-                      </div>
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="community-id-resident">Community ID</Label>
+                          <Input 
+                            id="community-id-resident"
+                            value={communityId}
+                            onChange={(e) => setCommunityId(e.target.value)}
+                            placeholder="Enter your community ID"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="apartment">Apartment/Room Number</Label>
+                          <Input 
+                            id="apartment" 
+                            placeholder="A201"
+                            value={apartment}
+                            onChange={(e) => setApartment(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </>
                     )}
                     
                     <Button type="submit" className="w-full" disabled={isLoading}>
