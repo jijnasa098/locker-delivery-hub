@@ -10,7 +10,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { Package, User } from '@/components/ui/avatar';
+import { Package, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavbarProps {
