@@ -1,9 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package as PackageType } from '@/lib/mockData';
-<lov-add-dependency>qrcode.react@3.1.0</lov-add-dependency>
 import { QRCodeSVG } from 'qrcode.react';
 
 interface QRCodeGeneratorProps {
