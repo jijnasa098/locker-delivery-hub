@@ -20,6 +20,8 @@ interface Staff {
   name: string;
   email: string;
   phone: string;
+  username: string;
+  communityId: string;
   role: 'staff';
 }
 
@@ -40,8 +42,24 @@ const CommunityManager = () => {
   // States
   const [lockers, setLockers] = useState<typeof initialLockers>([...initialLockers]);
   const [staffMembers, setStaffMembers] = useState<Staff[]>([
-    { id: 'staff1', name: 'John Staff', email: 'john.staff@example.com', phone: '555-1111', role: 'staff' },
-    { id: 'staff2', name: 'Jane Staff', email: 'jane.staff@example.com', phone: '555-2222', role: 'staff' }
+    { 
+      id: 'staff1', 
+      name: 'John Staff', 
+      email: 'john.staff@example.com', 
+      phone: '555-1111', 
+      username: 'jstaff',
+      communityId: 'c1',
+      role: 'staff' 
+    },
+    { 
+      id: 'staff2', 
+      name: 'Jane Staff', 
+      email: 'jane.staff@example.com', 
+      phone: '555-2222', 
+      username: 'janestaff',
+      communityId: 'c1',
+      role: 'staff' 
+    }
   ]);
 
   // Dialog states
@@ -51,6 +69,8 @@ const CommunityManager = () => {
     name: '',
     email: '',
     phone: '',
+    username: '',
+    communityId: manager.communityId, // Default to manager's community ID
   });
   const [lockerFormData, setLockerFormData] = useState({
     count: 1,
@@ -76,21 +96,39 @@ const CommunityManager = () => {
   };
 
   const handleAddStaff = () => {
+    // Validate required fields
+    if (!staffFormData.name || !staffFormData.email || !staffFormData.username) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newStaff: Staff = {
       id: `staff${staffMembers.length + 1}`,
       name: staffFormData.name,
       email: staffFormData.email,
       phone: staffFormData.phone,
+      username: staffFormData.username,
+      communityId: staffFormData.communityId,
       role: 'staff'
     };
 
     setStaffMembers([...staffMembers, newStaff]);
     setShowAddStaffDialog(false);
-    setStaffFormData({ name: '', email: '', phone: '' });
+    setStaffFormData({ 
+      name: '', 
+      email: '', 
+      phone: '', 
+      username: '',
+      communityId: manager.communityId 
+    });
     
     toast({
       title: "Staff Added",
-      description: `${staffFormData.name} has been added as staff.`,
+      description: `${staffFormData.name} has been added as staff with username ${staffFormData.username}.`,
     });
   };
 
@@ -140,7 +178,7 @@ const CommunityManager = () => {
           <div>
             <h1 className="text-3xl font-bold mb-2">Community Manager Dashboard</h1>
             <p className="text-muted-foreground">
-              Manage lockers and staff for {manager.communityName}
+              Manage lockers and staff for {manager.communityName} (ID: {manager.communityId})
             </p>
           </div>
         </div>
@@ -274,8 +312,10 @@ const CommunityManager = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
+                        <TableHead>Username</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
+                        <TableHead>Community ID</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -283,8 +323,10 @@ const CommunityManager = () => {
                       {staffMembers.map(staff => (
                         <TableRow key={staff.id}>
                           <TableCell className="font-medium">{staff.name}</TableCell>
+                          <TableCell>{staff.username}</TableCell>
                           <TableCell>{staff.email}</TableCell>
                           <TableCell>{staff.phone}</TableCell>
+                          <TableCell>{staff.communityId}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveStaff(staff.id)}>
                               <Trash className="h-4 w-4" />
@@ -330,6 +372,16 @@ const CommunityManager = () => {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                name="username"
+                value={staffFormData.username}
+                onChange={handleStaffFormChange}
+                placeholder="Enter username for login"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -350,12 +402,24 @@ const CommunityManager = () => {
                 placeholder="Enter phone number"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="communityId">Community ID</Label>
+              <Input
+                id="communityId"
+                name="communityId"
+                value={staffFormData.communityId}
+                onChange={handleStaffFormChange}
+                placeholder="Enter community ID"
+                disabled
+              />
+              <p className="text-xs text-muted-foreground">Staff will be assigned to your community.</p>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddStaffDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddStaff} disabled={!staffFormData.name || !staffFormData.email}>
+            <Button onClick={handleAddStaff} disabled={!staffFormData.name || !staffFormData.email || !staffFormData.username}>
               Add Staff
             </Button>
           </div>

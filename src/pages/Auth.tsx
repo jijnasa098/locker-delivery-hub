@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, User, Building } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { users } from '@/lib/mockData';
@@ -24,8 +25,24 @@ const Auth = () => {
   const [name, setName] = useState('');
   const [apartment, setApartment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userType, setUserType] = useState('resident');
+  const [lockerCount, setLockerCount] = useState('10');
+  const [lockSizes, setLockSizes] = useState({
+    small: 5,
+    medium: 3,
+    large: 2
+  });
   
-  const handleLogin = (e: React.FormEvent) => {
+  // Function to adjust lock counts
+  const handleLockSizeChange = (size, value) => {
+    const numValue = parseInt(value) || 0;
+    setLockSizes(prev => ({
+      ...prev,
+      [size]: numValue
+    }));
+  };
+  
+  const handleLogin = (e) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -66,15 +83,33 @@ const Auth = () => {
     }, 1000);
   };
   
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = (e) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Mock registration data for demonstration
+    const registrationData = {
+      name,
+      email,
+      communityId,
+      userType,
+      ...(userType === 'manager' && {
+        lockerSettings: {
+          totalLockers: parseInt(lockerCount) || 10,
+          lockSizes
+        }
+      })
+    };
+    
+    console.log('Registration data:', registrationData);
     
     // Mock registration - in a real app this would call an API
     setTimeout(() => {
       toast({
         title: "Registration Successful",
-        description: "Your account has been created. You can now log in.",
+        description: userType === 'manager' 
+          ? `Your community with ${lockerCount} lockers has been created. You can now log in.`
+          : "Your account has been created. You can now log in.",
       });
       
       setActiveTab('login');
@@ -83,7 +118,7 @@ const Auth = () => {
   };
   
   // Demo account login
-  const handleDemoLogin = (role: string) => {
+  const handleDemoLogin = (role) => {
     setIsLoading(true);
     
     setTimeout(() => {
@@ -181,6 +216,22 @@ const Auth = () => {
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="loginType">Login As</Label>
+                      <Select 
+                        defaultValue="resident" 
+                        onValueChange={(value) => setUserType(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select user type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="resident">Resident</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="manager">Community Manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Logging in..." : "Login"}
                     </Button>
@@ -220,15 +271,89 @@ const Auth = () => {
                 <CardContent>
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="community-id">Community ID</Label>
-                      <Input 
-                        id="community-id"
-                        value={communityId}
-                        onChange={(e) => setCommunityId(e.target.value)}
-                        placeholder="Enter your community ID"
-                        required
-                      />
+                      <Label htmlFor="register-type">Register As</Label>
+                      <Select 
+                        defaultValue="resident"
+                        onValueChange={(value) => setUserType(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select user type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="resident">Resident</SelectItem>
+                          <SelectItem value="manager">Community Manager</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+                    
+                    {userType === 'manager' && (
+                      <div className="space-y-4 border rounded-md p-4 bg-muted/20">
+                        <h3 className="text-sm font-medium">Community Locker Setup</h3>
+                        <div className="space-y-2">
+                          <Label htmlFor="community-id">Community Name/ID</Label>
+                          <Input 
+                            id="community-id"
+                            value={communityId}
+                            onChange={(e) => setCommunityId(e.target.value)}
+                            placeholder="E.g., Green Valley Apartments"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="locker-count">Number of Lockers</Label>
+                          <Input 
+                            id="locker-count"
+                            type="number"
+                            min="1"
+                            value={lockerCount}
+                            onChange={(e) => setLockerCount(e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Locker Size Distribution</Label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <Label htmlFor="small-lockers" className="text-xs">Small</Label>
+                              <Input 
+                                id="small-lockers"
+                                type="number"
+                                min="0"
+                                value={lockSizes.small}
+                                onChange={(e) => handleLockSizeChange('small', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="medium-lockers" className="text-xs">Medium</Label>
+                              <Input 
+                                id="medium-lockers"
+                                type="number"
+                                min="0"
+                                value={lockSizes.medium}
+                                onChange={(e) => handleLockSizeChange('medium', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="large-lockers" className="text-xs">Large</Label>
+                              <Input 
+                                id="large-lockers"
+                                type="number"
+                                min="0"
+                                value={lockSizes.large}
+                                onChange={(e) => handleLockSizeChange('large', e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Total: {parseInt(lockSizes.small) + parseInt(lockSizes.medium) + parseInt(lockSizes.large)} 
+                            {parseInt(lockerCount) !== parseInt(lockSizes.small) + parseInt(lockSizes.medium) + parseInt(lockSizes.large) && 
+                              " (should match the number of lockers above)"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
                       <Input 
@@ -261,15 +386,19 @@ const Auth = () => {
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="apartment">Apartment/Room Number</Label>
-                      <Input 
-                        id="apartment" 
-                        placeholder="A201"
-                        value={apartment}
-                        onChange={(e) => setApartment(e.target.value)}
-                      />
-                    </div>
+                    
+                    {userType === 'resident' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="apartment">Apartment/Room Number</Label>
+                        <Input 
+                          id="apartment" 
+                          placeholder="A201"
+                          value={apartment}
+                          onChange={(e) => setApartment(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Creating account..." : "Create Account"}
                     </Button>
