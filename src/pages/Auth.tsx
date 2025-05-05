@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -28,17 +27,17 @@ const Auth = () => {
   const [userType, setUserType] = useState('resident');
   const [lockerCount, setLockerCount] = useState('10');
   const [lockSizes, setLockSizes] = useState({
-    small: 5,
-    medium: 3,
-    large: 2
+    small: "5",
+    medium: "3",
+    large: "2"
   });
   
   // Function to adjust lock counts
-  const handleLockSizeChange = (size, value) => {
+  const handleLockSizeChange = (size: 'small' | 'medium' | 'large', value: string) => {
     const numValue = parseInt(value) || 0;
     setLockSizes(prev => ({
       ...prev,
-      [size]: numValue
+      [size]: numValue.toString() // Convert number to string
     }));
   };
   
@@ -83,7 +82,7 @@ const Auth = () => {
     }, 1000);
   };
   
-  const handleRegister = (e) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -96,7 +95,11 @@ const Auth = () => {
       ...(userType === 'manager' && {
         lockerSettings: {
           totalLockers: parseInt(lockerCount) || 10,
-          lockSizes
+          lockSizes: {
+            small: parseInt(lockSizes.small) || 0,
+            medium: parseInt(lockSizes.medium) || 0,
+            large: parseInt(lockSizes.large) || 0
+          }
         }
       })
     };
