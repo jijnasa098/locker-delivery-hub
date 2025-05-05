@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, User } from 'lucide-react';
+import { Package, User, Building } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { users } from '@/lib/mockData';
 
@@ -20,6 +20,7 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [communityId, setCommunityId] = useState('');
   const [name, setName] = useState('');
   const [apartment, setApartment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,13 +34,19 @@ const Auth = () => {
       const user = users.find(user => user.email === email);
       
       if (user) {
-        // In a real app, we would verify the password
+        // In a real app, we would verify the password and communityId
         if (email === 'admin@example.com') {
           toast({
             title: "Logged in as Admin",
             description: "You have been logged in as an administrator.",
           });
           navigate('/admin');
+        } else if (email === 'manager@example.com') {
+          toast({
+            title: "Logged in as Community Manager",
+            description: "You have been logged in as a community manager.",
+          });
+          navigate('/community-manager');
         } else {
           toast({
             title: "Login Successful",
@@ -50,7 +57,7 @@ const Auth = () => {
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
+          description: "Invalid credentials. Please try again.",
           variant: "destructive",
         });
       }
@@ -76,28 +83,30 @@ const Auth = () => {
   };
   
   // Demo account login
-  const handleDemoLogin = () => {
+  const handleDemoLogin = (role: string) => {
     setIsLoading(true);
     
     setTimeout(() => {
-      toast({
-        title: "Demo Login",
-        description: "You have been logged in to the demo account.",
-      });
-      navigate('/dashboard');
-      setIsLoading(false);
-    }, 1000);
-  };
-  
-  const handleDemoAdminLogin = () => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      toast({
-        title: "Demo Admin Login",
-        description: "You have been logged in as an administrator.",
-      });
-      navigate('/admin');
+      if (role === 'user') {
+        toast({
+          title: "Demo User Login",
+          description: "You have been logged in to the demo user account.",
+        });
+        navigate('/dashboard');
+      } else if (role === 'admin') {
+        toast({
+          title: "Demo Admin Login",
+          description: "You have been logged in as an administrator.",
+        });
+        navigate('/admin');
+      } else if (role === 'manager') {
+        toast({
+          title: "Demo Manager Login",
+          description: "You have been logged in as a community manager.",
+        });
+        navigate('/community-manager');
+      }
+      
       setIsLoading(false);
     }, 1000);
   };
@@ -132,6 +141,16 @@ const Auth = () => {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="communityId">Community ID</Label>
+                      <Input 
+                        id="communityId" 
+                        placeholder="Enter your community ID"
+                        value={communityId}
+                        onChange={(e) => setCommunityId(e.target.value)}
+                        required
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <Input 
@@ -172,14 +191,18 @@ const Auth = () => {
                     <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                     <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-muted"></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 w-full">
-                    <Button variant="outline" onClick={handleDemoLogin} disabled={isLoading}>
+                  <div className="grid grid-cols-3 gap-3 w-full">
+                    <Button variant="outline" onClick={() => handleDemoLogin('user')} disabled={isLoading}>
                       <User className="mr-2 h-4 w-4" />
                       Demo User
                     </Button>
-                    <Button variant="outline" onClick={handleDemoAdminLogin} disabled={isLoading}>
+                    <Button variant="outline" onClick={() => handleDemoLogin('admin')} disabled={isLoading}>
                       <User className="mr-2 h-4 w-4" />
                       Demo Admin
+                    </Button>
+                    <Button variant="outline" onClick={() => handleDemoLogin('manager')} disabled={isLoading}>
+                      <Building className="mr-2 h-4 w-4" />
+                      Manager
                     </Button>
                   </div>
                 </CardFooter>
@@ -196,6 +219,16 @@ const Auth = () => {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleRegister} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="community-id">Community ID</Label>
+                      <Input 
+                        id="community-id"
+                        value={communityId}
+                        onChange={(e) => setCommunityId(e.target.value)}
+                        placeholder="Enter your community ID"
+                        required
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
                       <Input 

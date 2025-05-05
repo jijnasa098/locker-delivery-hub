@@ -76,7 +76,7 @@ const Admin = () => {
       pkg.id === selectedPackage.id 
         ? { 
             ...pkg, 
-            status: 'delivered', 
+            status: 'delivered' as const, // Fix the type issue by using 'as const'
             lockerNumber: selectedLocker,
             deliveredAt: new Date()
           } 
@@ -88,7 +88,7 @@ const Admin = () => {
       locker.id === selectedLocker 
         ? { 
             ...locker, 
-            status: 'occupied', 
+            status: 'occupied' as const, // Fix the type issue by using 'as const'
             packageId: selectedPackage.id 
           } 
         : locker
@@ -135,7 +135,7 @@ const Admin = () => {
       recipientId: newPackage.recipientId,
       courier: newPackage.courier,
       description: newPackage.description,
-      status: 'pending',
+      status: 'pending' as const, // Fix the type issue by using 'as const'
       size: newPackage.size as 'small' | 'medium' | 'large',
     };
     
