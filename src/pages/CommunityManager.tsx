@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X } from 'lucide-react';
+import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import LockerMap from '@/components/LockerMap';
 import { lockers as mockLockers } from '@/lib/mockData';
@@ -131,6 +130,7 @@ const CommunityManager = () => {
 
   // Dialog states
   const [showAddLockerSystemDialog, setShowAddLockerSystemDialog] = useState(false);
+  const [showRemoveLockerDialog, setShowRemoveLockerDialog] = useState(false);
   
   // System form data
   const [systemFormData, setSystemFormData] = useState({
@@ -391,7 +391,44 @@ const CommunityManager = () => {
       description: `Locker #${lockerId} has been removed.`,
     });
   };
-  
+
+  const handleRemoveLockers = () => {
+    const { count, size, systemId } = removeLockerFormData;
+    
+    // Filter to get lockers of the specified size and system
+    const matchingLockers = lockers.filter(
+      locker => locker.systemId === systemId && 
+                locker.size === size && 
+                locker.status === 'available'
+    );
+    
+    // Check if there are enough lockers to remove
+    if (matchingLockers.length < count) {
+      toast({
+        title: "Not Enough Lockers",
+        description: `There are only ${matchingLockers.length} available ${size} lockers in this system.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Sort by ID so we remove the highest ID lockers first (assuming these were added last)
+    const lockersToRemove = matchingLockers
+      .sort((a, b) => b.id - a.id)
+      .slice(0, count)
+      .map(locker => locker.id);
+    
+    // Remove the lockers
+    setLockers(prevLockers => prevLockers.filter(locker => !lockersToRemove.includes(locker.id)));
+    
+    setShowRemoveLockerDialog(false);
+    
+    toast({
+      title: "Lockers Removed",
+      description: `${count} ${size} lockers have been removed from ${lockerSystems.find(s => s.id === systemId)?.name}.`,
+    });
+  };
+
   // Handle resident approval
   const handleResidentApproval = (residentId: string, approved: boolean) => {
     // Find the resident
@@ -526,6 +563,17 @@ const CommunityManager = () => {
                     <Button onClick={() => setShowAddLockerDialog(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Lockers
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setRemoveLockerFormData(prev => ({ ...prev, systemId: selectedSystemId }));
+                        setShowRemoveLockerDialog(true);
+                      }} 
+                      variant="outline" 
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      <Minus className="mr-2 h-4 w-4" />
+                      Remove Lockers
                     </Button>
                   </div>
                 </div>
@@ -963,6 +1011,105 @@ const CommunityManager = () => {
             </Button>
             <Button onClick={handleAddLockerSystem} disabled={!systemFormData.name || !systemFormData.location}>
               Add System
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Remove Lockers Dialog */}
+      <Dialog open={showRemoveLockerDialog} onOpenChange={setShowRemoveLockerDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove Lockers</DialogTitle>
+            <DialogDescription>
+              Remove lockers from your community.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="remove-systemId">Locker System</Label>
+              <Select 
+                value={removeLockerFormData.systemId.toString()}
+                onValueChange={(value) => setRemoveLockerFormData(prev => ({ ...prev, systemId: parseInt(value) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select locker system" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lockerSystems.map(system => (
+                    <SelectItem key={system.id} value={system.id.toString()}>
+                      {system.name} ({system.location})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remove-count">Number of Lockers to Remove</Label>
+              <Input
+                id="remove-count"
+                name="count"
+                type="number"
+                min="1"
+                value={removeLockerFormData.count}
+                onChange={handleRemoveLockerFormChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remove-size">Locker Size</Label>
+              <Select 
+                value={removeLockerFormData.size} 
+                onValueChange={(value) => setRemoveLockerFormData(prev => ({ ...prev, size: value as any }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Only available lockers can be removed. Occupied lockers must be freed first.
+              </p>
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <h3 className="text-sm font-medium mb-2">Available Lockers:</h3>
+              {removeLockerFormData.systemId && (
+                <div className="text-sm">
+                  <div className="flex justify-between">
+                    <span>Small:</span>
+                    <span>{lockers.filter(l => l.systemId === removeLockerFormData.systemId && 
+                                              l.size === 'small' && 
+                                              l.status === 'available').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Medium:</span>
+                    <span>{lockers.filter(l => l.systemId === removeLockerFormData.systemId && 
+                                              l.size === 'medium' && 
+                                              l.status === 'available').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Large:</span>
+                    <span>{lockers.filter(l => l.systemId === removeLockerFormData.systemId && 
+                                              l.size === 'large' && 
+                                              l.status === 'available').length}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowRemoveLockerDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRemoveLockers}
+              variant="destructive"
+              disabled={removeLockerFormData.count < 1}
+            >
+              Remove Lockers
             </Button>
           </div>
         </DialogContent>
