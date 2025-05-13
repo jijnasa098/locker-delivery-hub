@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +13,7 @@ import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus, Pack
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
+import LockerGrid from '@/components/LockerGrid';
 import { lockers as mockLockers } from '@/lib/mockData';
 
 // Define consistent interfaces
@@ -140,6 +140,9 @@ const CommunityManager = () => {
     location: ''
   });
 
+  // Package history state
+  const [packageHistory, setPackageHistory] = useState<PackageDetails[]>([]);
+  
   // Get registration data from localStorage if available
   useEffect(() => {
     const savedData = localStorage.getItem('registrationData');
@@ -488,6 +491,63 @@ const CommunityManager = () => {
     };
   };
 
+  // Handle package storage with OTP generation
+  const handlePackageStore = (lockerId: number, packageDetails: PackageDetails) => {
+    // Update the locker with package details
+    setLockers(prevLockers => 
+      prevLockers.map(locker => 
+        locker.id === lockerId 
+          ? { ...locker, status: 'occupied', packageDetails } 
+          : locker
+      )
+    );
+    
+    // Add to package history
+    setPackageHistory(prev => [...prev, packageDetails]);
+    
+    toast({
+      title: "Package Stored",
+      description: `Package for ${packageDetails.recipientName} has been stored in locker #${lockerId}. OTP: ${packageDetails.otp}`,
+    });
+  };
+  
+  // Handle package retrieval
+  const handlePackageRetrieve = (lockerId: number, retrievedBy: string) => {
+    // Find the locker
+    const locker = lockers.find(l => l.id === lockerId);
+    if (!locker || !locker.packageDetails) return;
+    
+    // Update package details with retrieval information
+    const updatedPackageDetails = {
+      ...locker.packageDetails,
+      retrievedBy,
+      retrievedAt: new Date()
+    };
+    
+    // Update package history
+    setPackageHistory(prev => 
+      prev.map(pkg => 
+        pkg.id === locker.packageDetails?.id
+          ? updatedPackageDetails
+          : pkg
+      )
+    );
+    
+    // Mark locker as available again
+    setLockers(prevLockers => 
+      prevLockers.map(l => 
+        l.id === lockerId 
+          ? { ...l, status: 'available', packageDetails: undefined } 
+          : l
+      )
+    );
+    
+    toast({
+      title: "Package Retrieved",
+      description: `Package has been successfully retrieved by ${retrievedBy}.`,
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar 
@@ -560,6 +620,7 @@ const CommunityManager = () => {
             <TabsTrigger value="lockers">Locker Management</TabsTrigger>
             <TabsTrigger value="staff">Staff Management</TabsTrigger>
             <TabsTrigger value="residents">Resident Management</TabsTrigger>
+            <TabsTrigger value="packages">Package History</TabsTrigger>
           </TabsList>
           
           <TabsContent value="lockers">
@@ -624,68 +685,23 @@ const CommunityManager = () => {
                         {lockerSystems.find(s => s.id === selectedSystemId)?.name} Lockers
                       </h3>
                       
-                      {filteredLockers.length > 0 ? (
-                        <LockerMap 
-                          lockers={filteredLockers} 
-                          onLockerSelect={(id) => {
-                            const locker = lockers.find(l => l.id === id);
-                            if (locker && locker.status === 'available') {
-                              if (confirm(`Are you sure you want to remove locker #${id}?`)) {
-                                handleRemoveLocker(id);
-                              }
-                            } else {
-                              toast({
-                                title: "Cannot Remove",
-                                description: "You cannot remove an occupied locker.",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="text-center py-8">
-                          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-xl font-medium mb-2">No Lockers</h3>
-                          <p className="text-muted-foreground mb-6">
-                            This locker system doesn't have any lockers yet.
-                          </p>
-                          <Button onClick={() => {
-                            setLockerFormData(prev => ({ ...prev, systemId: selectedSystemId }));
-                            setShowAddLockerDialog(true);
-                          }}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Lockers
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {filteredLockers.length > 0 && (
-                        <div className="bg-muted p-4 rounded-md mt-4">
-                          <h3 className="font-medium mb-2">Locker Distribution:</h3>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex justify-between">
-                              <span>Small Lockers:</span>
-                              <span>{filteredLockers.filter(l => l.size === 'small').length}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Medium Lockers:</span>
-                              <span>{filteredLockers.filter(l => l.size === 'medium').length}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Large Lockers:</span>
-                              <span>{filteredLockers.filter(l => l.size === 'large').length}</span>
-                            </div>
-                            <div className="flex justify-between font-medium pt-2 border-t">
-                              <span>Available:</span>
-                              <span>{filteredLockers.filter(l => l.status === 'available').length}</span>
-                            </div>
-                            <div className="flex justify-between font-medium">
-                              <span>Occupied:</span>
-                              <span>{filteredLockers.filter(l => l.status === 'occupied').length}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <LockerGrid 
+                        lockers={lockers}
+                        lockerSystems={lockerSystems}
+                        selectedSystemId={selectedSystemId}
+                        onAddLockers={(count, size, systemId) => {
+                          setLockerFormData({ count, size, systemId });
+                          handleAddLockers();
+                        }}
+                        onRemoveLockers={(count, size, systemId) => {
+                          setRemoveLockerFormData({ count, size, systemId });
+                          handleRemoveLockers();
+                        }}
+                        onRemoveSingleLocker={handleRemoveLocker}
+                        onPackageStore={handlePackageStore}
+                        onPackageRetrieve={handlePackageRetrieve}
+                        currentUser={{ name: manager.name, role: manager.role }}
+                      />
                     </div>
                   )}
                 </div>
@@ -841,6 +857,65 @@ const CommunityManager = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="packages">
+            <Card>
+              <CardHeader>
+                <CardTitle>Package History</CardTitle>
+                <CardDescription>Track all package activity in the community</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {packageHistory.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Package ID</TableHead>
+                        <TableHead>Recipient</TableHead>
+                        <TableHead>Product ID</TableHead>
+                        <TableHead>Placed By</TableHead>
+                        <TableHead>Placed At</TableHead>
+                        <TableHead>Retrieved By</TableHead>
+                        <TableHead>Retrieved At</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {packageHistory.map(pkg => (
+                        <TableRow key={pkg.id}>
+                          <TableCell className="font-mono">{pkg.id}</TableCell>
+                          <TableCell>{pkg.recipientName}</TableCell>
+                          <TableCell>{pkg.productId}</TableCell>
+                          <TableCell>{pkg.placedBy}</TableCell>
+                          <TableCell>{format(new Date(pkg.placedAt), 'MMM d, h:mm a')}</TableCell>
+                          <TableCell>{pkg.retrievedBy || '-'}</TableCell>
+                          <TableCell>
+                            {pkg.retrievedAt 
+                              ? format(new Date(pkg.retrievedAt), 'MMM d, h:mm a')
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {pkg.retrievedAt 
+                              ? <Badge variant="outline" className="bg-green-50 text-green-700">Retrieved</Badge>
+                              : <Badge variant="outline" className="bg-blue-50 text-blue-700">Stored</Badge>
+                            }
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <PackageOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-medium mb-2">No Package History</h3>
+                    <p className="text-muted-foreground">
+                      When packages are stored or retrieved, they will appear here.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

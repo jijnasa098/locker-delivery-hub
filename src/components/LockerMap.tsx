@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Locker } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
-import { Box, Lock, Package, PackageOpen, Unlock } from 'lucide-react';
+import { Box, Lock, Package, PackageOpen, Unlock, Key } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { useToast } from '@/hooks/use-toast';
 
 export interface PackageDetails {
   id: string;
@@ -21,6 +23,7 @@ export interface PackageDetails {
   placedAt: Date;
   retrievedBy?: string;
   retrievedAt?: Date;
+  otp?: string;
 }
 
 interface LockerMapProps {
@@ -30,6 +33,8 @@ interface LockerMapProps {
   onPackageStore?: (lockerId: number, packageDetails: PackageDetails) => void;
   onPackageRetrieve?: (lockerId: number, retrievedBy: string) => void;
   currentUser?: { name: string; role: string };
+  rows?: number;
+  columns?: number;
 }
 
 const LockerMap = ({ 
@@ -38,8 +43,11 @@ const LockerMap = ({
   selectedLockerId,
   onPackageStore,
   onPackageRetrieve,
-  currentUser
+  currentUser,
+  rows = 5,
+  columns = 6
 }: LockerMapProps) => {
+  const { toast } = useToast();
   const [selectedLocker, setSelectedLocker] = useState<Locker | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [packageDetails, setPackageDetails] = useState<Partial<PackageDetails>>({
@@ -48,7 +56,8 @@ const LockerMap = ({
     trackingNumber: '',
     comments: '',
   });
-  const [dialogMode, setDialogMode] = useState<'store' | 'retrieve'>('store');
+  const [dialogMode, setDialogMode] = useState<'store' | 'retrieve' | 'otp-verify'>('store');
+  const [otpInput, setOtpInput] = useState('');
 
   const getLockerSizeClass = (size: string) => {
     switch (size) {
@@ -91,9 +100,16 @@ const LockerMap = ({
     }
   };
 
+  // Generate a random 6-digit OTP
+  const generateOTP = (): string => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   const handleStorePackage = () => {
     if (!selectedLocker || !currentUser) return;
 
+    const otp = generateOTP();
+    
     const completePackageDetails: PackageDetails = {
       id: `pkg_${Date.now()}`,
       recipientName: packageDetails.recipientName || '',
@@ -102,23 +118,75 @@ const LockerMap = ({
       comments: packageDetails.comments || '',
       placedBy: currentUser.name,
       placedAt: new Date(),
+      otp: otp
     };
 
     if (onPackageStore) {
       onPackageStore(selectedLocker.id, completePackageDetails);
     }
 
+    toast({
+      title: "Package Stored Successfully",
+      description: `OTP: ${otp} - Share this with the recipient for retrieval.`,
+    });
+
     setShowDialog(false);
   };
 
-  const handleRetrievePackage = () => {
-    if (!selectedLocker || !currentUser) return;
+  const handleRetrieveRequest = () => {
+    if (!selectedLocker || !selectedLocker.packageDetails) return;
+    setDialogMode('otp-verify');
+  };
 
-    if (onPackageRetrieve) {
-      onPackageRetrieve(selectedLocker.id, currentUser.name);
+  const handleVerifyOTP = () => {
+    if (!selectedLocker || !currentUser || !selectedLocker.packageDetails) return;
+
+    if (otpInput === selectedLocker.packageDetails.otp) {
+      if (onPackageRetrieve) {
+        onPackageRetrieve(selectedLocker.id, currentUser.name);
+      }
+
+      toast({
+        title: "Package Retrieved Successfully",
+        description: "OTP verified. You may collect your package.",
+      });
+
+      setShowDialog(false);
+      setOtpInput('');
+    } else {
+      toast({
+        title: "Invalid OTP",
+        description: "The OTP you entered is incorrect. Please try again.",
+        variant: "destructive",
+      });
     }
+  };
 
-    setShowDialog(false);
+  // Organize lockers in a grid based on rows and columns
+  const organizeLockersByGrid = () => {
+    const grid: Locker[][] = Array(rows).fill(null).map(() => Array(columns).fill(null));
+    
+    lockers.forEach(locker => {
+      // Extract row and column from locker ID (assuming format: row*columns + column)
+      // For example, with 5 columns: locker ID 7 would be in row 1, column 2 (0-indexed)
+      const row = Math.floor((locker.id - 1) / columns);
+      const col = (locker.id - 1) % columns;
+      
+      if (row < rows && col < columns) {
+        grid[row][col] = locker;
+      }
+    });
+    
+    return grid;
+  };
+
+  const lockerGrid = organizeLockersByGrid();
+  
+  // Format locker number to show row/column format (e.g., "01", "02", etc.)
+  const formatLockerNumber = (lockerId: number): string => {
+    const row = Math.floor((lockerId - 1) / columns) + 1;
+    const col = ((lockerId - 1) % columns) + 1;
+    return `${row.toString().padStart(2, '0')}${col.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -137,43 +205,55 @@ const LockerMap = ({
         </div>
       </div>
       
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 p-4 bg-secondary/50 rounded-lg">
-        {lockers.map((locker) => (
-          <TooltipProvider key={locker.id}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div 
-                  className={cn(
-                    getLockerSizeClass(locker.size),
-                    'border rounded-md flex flex-col items-center justify-center p-2 cursor-pointer transition-all',
-                    locker.status === 'available' ? 'bg-green-50 border-green-200 hover:bg-green-100' : 'bg-red-50 border-red-200 hover:bg-red-100',
-                    selectedLockerId === locker.id && 'ring-2 ring-primary'
-                  )}
-                  onClick={() => handleLockerClick(locker)}
-                >
-                  <div className="flex justify-center mb-1">
-                    {getLockerIcon(locker)}
-                  </div>
-                  <Badge variant="outline" className="text-xs px-1.5 py-0">
-                    #{locker.id}
-                  </Badge>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-sm">
-                  <p>Locker #{locker.id}</p>
-                  <p className="capitalize">Size: {locker.size}</p>
-                  <p>Status: {locker.status}</p>
-                  {locker.status === 'occupied' && locker.packageDetails && (
-                    <>
-                      <p className="mt-1">Recipient: {locker.packageDetails.recipientName}</p>
-                      <p>Product ID: {locker.packageDetails.productId}</p>
-                    </>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="bg-secondary/50 rounded-lg p-4">
+        {lockerGrid.map((row, rowIndex) => (
+          <div key={`row-${rowIndex}`} className="flex mb-4 last:mb-0">
+            {row.map((locker, colIndex) => (
+              <div key={`col-${colIndex}`} className="flex-1 px-2 first:pl-0 last:pr-0">
+                {locker ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className={cn(
+                            getLockerSizeClass(locker.size),
+                            'border rounded-md flex flex-col items-center justify-center p-2 cursor-pointer transition-all mx-auto',
+                            locker.status === 'available' 
+                              ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                              : 'bg-red-50 border-red-200 hover:bg-red-100',
+                            selectedLockerId === locker.id && 'ring-2 ring-primary'
+                          )}
+                          onClick={() => handleLockerClick(locker)}
+                        >
+                          <div className="flex justify-center mb-1">
+                            {getLockerIcon(locker)}
+                          </div>
+                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                            {formatLockerNumber(locker.id)}
+                          </Badge>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="text-sm">
+                          <p>Locker #{formatLockerNumber(locker.id)}</p>
+                          <p className="capitalize">Size: {locker.size}</p>
+                          <p>Status: {locker.status}</p>
+                          {locker.status === 'occupied' && locker.packageDetails && (
+                            <>
+                              <p className="mt-1">Recipient: {locker.packageDetails.recipientName}</p>
+                              <p>Product ID: {locker.packageDetails.productId}</p>
+                            </>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <div className={`h-16 w-16 border border-dashed border-gray-200 rounded-md mx-auto`}></div>
+                )}
+              </div>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -182,16 +262,20 @@ const LockerMap = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'store' ? 'Store Package in Locker' : 'Retrieve Package from Locker'}
+              {dialogMode === 'store' && 'Store Package in Locker'}
+              {dialogMode === 'retrieve' && 'Retrieve Package from Locker'}
+              {dialogMode === 'otp-verify' && 'Enter OTP to Retrieve Package'}
             </DialogTitle>
             <DialogDescription>
               {dialogMode === 'store'
-                ? `Enter the package details to store in Locker #${selectedLocker?.id}`
-                : `Package details for Locker #${selectedLocker?.id}`}
+                ? `Enter the package details to store in Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`
+                : dialogMode === 'retrieve'
+                ? `Package details for Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`
+                : `Please enter the OTP sent to the recipient to unlock Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`}
             </DialogDescription>
           </DialogHeader>
           
-          {dialogMode === 'store' ? (
+          {dialogMode === 'store' && (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label htmlFor="recipientName">Recipient Name*</Label>
@@ -236,7 +320,9 @@ const LockerMap = ({
                 <p>Timestamp: {format(new Date(), 'PPpp')}</p>
               </div>
             </div>
-          ) : (
+          )}
+          
+          {dialogMode === 'retrieve' && (
             <div className="space-y-4 py-2">
               {selectedLocker?.packageDetails && (
                 <>
@@ -275,12 +361,35 @@ const LockerMap = ({
               )}
             </div>
           )}
+
+          {dialogMode === 'otp-verify' && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="otp">Enter the 6-digit OTP</Label>
+                <InputOTP 
+                  value={otpInput} 
+                  onChange={setOtpInput} 
+                  maxLength={6} 
+                  render={({ slots }) => (
+                    <InputOTPGroup>
+                      {slots.map((slot, index) => (
+                        <InputOTPSlot key={index} {...slot} />
+                      ))}
+                    </InputOTPGroup>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  The OTP was provided to the recipient when the package was stored.
+                </p>
+              </div>
+            </div>
+          )}
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            {dialogMode === 'store' ? (
+            {dialogMode === 'store' && (
               <Button 
                 onClick={handleStorePackage}
                 disabled={!packageDetails.recipientName || !packageDetails.productId}
@@ -288,10 +397,17 @@ const LockerMap = ({
                 <Package className="mr-2 h-4 w-4" />
                 Store Package
               </Button>
-            ) : (
-              <Button onClick={handleRetrievePackage}>
+            )}
+            {dialogMode === 'retrieve' && (
+              <Button onClick={handleRetrieveRequest}>
+                <Key className="mr-2 h-4 w-4" />
+                Enter OTP to Retrieve
+              </Button>
+            )}
+            {dialogMode === 'otp-verify' && (
+              <Button onClick={handleVerifyOTP} disabled={otpInput.length !== 6}>
                 <PackageOpen className="mr-2 h-4 w-4" />
-                Retrieve Package
+                Verify & Retrieve
               </Button>
             )}
           </DialogFooter>
