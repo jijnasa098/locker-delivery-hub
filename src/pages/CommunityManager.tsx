@@ -10,11 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, User, Lock, Plus, Trash, Edit, UserPlus } from 'lucide-react';
+import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import LockerMap from '@/components/LockerMap';
-import { lockers as initialLockers } from '@/lib/mockData';
+import { lockers as mockLockers } from '@/lib/mockData';
 
+// Define consistent interfaces
 interface Staff {
   id: string;
   name: string;
@@ -44,13 +45,27 @@ interface RegistrationData {
   email: string;
   communityId: string;
   userType: string;
+  phone?: string;
+  apartment?: string;
   lockerSettings?: LockerSettings;
 }
 
-// Locker interface
+// Updated resident interface with pending approval status
+interface Resident {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  apartment: string;
+  communityId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  role: 'resident';
+}
+
+// Updated Locker interface with systemId
 interface Locker {
   id: number;
-  systemId: number; // Added to track which system it belongs to
+  systemId: number;
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied' | 'maintenance';
 }
@@ -71,6 +86,34 @@ const CommunityManager = () => {
 
   // Lockers state - now with systemId
   const [lockers, setLockers] = useState<Locker[]>([]);
+  
+  // Pending residents awaiting approval
+  const [pendingResidents, setPendingResidents] = useState<Resident[]>([
+    { 
+      id: 'res1', 
+      name: 'John Resident', 
+      email: 'john@example.com',
+      phone: '555-1234',
+      apartment: 'A101',
+      communityId: 'c1',
+      status: 'pending',
+      role: 'resident'
+    }
+  ]);
+  
+  // Approved residents
+  const [residents, setResidents] = useState<Resident[]>([
+    { 
+      id: 'res2', 
+      name: 'Jane Resident', 
+      email: 'jane@example.com',
+      phone: '555-5678',
+      apartment: 'B202',
+      communityId: 'c1',
+      status: 'approved',
+      role: 'resident'
+    }
+  ]);
   
   // Locker systems state
   const [lockerSystems, setLockerSystems] = useState<Array<{
@@ -119,11 +162,67 @@ const CommunityManager = () => {
             setLockers(generatedLockers);
           } else {
             // Fall back to initial lockers if no settings
-            setLockers([...initialLockers]);
+            // We need to convert mockLockers to match our Locker interface by adding systemId
+            const convertedLockers: Locker[] = mockLockers.map(locker => ({
+              ...locker,
+              systemId: 1, // Assign all to default system ID
+              status: locker.status as 'available' | 'occupied' | 'maintenance'
+            }));
+            setLockers(convertedLockers);
+          }
+        }
+        
+        // Check if there's a pending resident registration to add
+        if (parsedData.userType === 'resident') {
+          const newResident: Resident = {
+            id: `res${pendingResidents.length + residents.length + 1}`,
+            name: parsedData.name,
+            email: parsedData.email,
+            phone: parsedData.phone || '',
+            apartment: parsedData.apartment || '',
+            communityId: parsedData.communityId,
+            status: 'pending',
+            role: 'resident'
+          };
+          
+          // Check if this resident is already in our lists
+          const existingPending = pendingResidents.find(r => r.email === parsedData.email);
+          const existingApproved = residents.find(r => r.email === parsedData.email);
+          
+          if (!existingPending && !existingApproved) {
+            setPendingResidents(prev => [...prev, newResident]);
+            
+            // Store the updated resident data
+            localStorage.setItem('pendingResidents', JSON.stringify([...pendingResidents, newResident]));
+            
+            // Remove registration data to prevent duplicate additions
+            localStorage.removeItem('registrationData');
           }
         }
       } catch (error) {
         console.error("Error parsing registration data", error);
+      }
+    }
+    
+    // Load pending residents from localStorage if available
+    const savedPendingResidents = localStorage.getItem('pendingResidents');
+    if (savedPendingResidents) {
+      try {
+        const parsedPendingResidents = JSON.parse(savedPendingResidents) as Resident[];
+        setPendingResidents(parsedPendingResidents);
+      } catch (error) {
+        console.error("Error parsing pending residents", error);
+      }
+    }
+    
+    // Load approved residents from localStorage if available
+    const savedResidents = localStorage.getItem('approvedResidents');
+    if (savedResidents) {
+      try {
+        const parsedResidents = JSON.parse(savedResidents) as Resident[];
+        setResidents(parsedResidents);
+      } catch (error) {
+        console.error("Error parsing approved residents", error);
       }
     }
   }, []);
@@ -303,6 +402,37 @@ const CommunityManager = () => {
       description: `Locker #${lockerId} has been removed.`,
     });
   };
+  
+  // Handle resident approval
+  const handleResidentApproval = (residentId: string, approved: boolean) => {
+    // Find the resident
+    const resident = pendingResidents.find(r => r.id === residentId);
+    
+    if (resident) {
+      // Remove from pending list
+      const updatedPending = pendingResidents.filter(r => r.id !== residentId);
+      setPendingResidents(updatedPending);
+      localStorage.setItem('pendingResidents', JSON.stringify(updatedPending));
+      
+      if (approved) {
+        // Add to approved list
+        const updatedResident = {...resident, status: 'approved' as const};
+        const updatedResidents = [...residents, updatedResident];
+        setResidents(updatedResidents);
+        localStorage.setItem('approvedResidents', JSON.stringify(updatedResidents));
+        
+        toast({
+          title: "Resident Approved",
+          description: `${resident.name} has been approved and can now access the system.`,
+        });
+      } else {
+        toast({
+          title: "Resident Rejected",
+          description: `${resident.name}'s registration has been rejected.`,
+        });
+      }
+    }
+  };
 
   // Get locker counts by system and size
   const getLockerCounts = (systemId: number) => {
@@ -370,11 +500,16 @@ const CommunityManager = () => {
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Staff</CardTitle>
-              <CardDescription>Total staff members</CardDescription>
+              <CardTitle className="text-lg">Residents</CardTitle>
+              <CardDescription>Approved residents</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-500">{staffMembers.length}</div>
+              <div className="text-3xl font-bold text-blue-500">{residents.length}</div>
+              {pendingResidents.length > 0 && (
+                <div className="text-sm text-amber-500 mt-1">
+                  {pendingResidents.length} pending approval
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -383,6 +518,7 @@ const CommunityManager = () => {
           <TabsList>
             <TabsTrigger value="lockers">Locker Management</TabsTrigger>
             <TabsTrigger value="staff">Staff Management</TabsTrigger>
+            <TabsTrigger value="residents">Resident Management</TabsTrigger>
           </TabsList>
           
           <TabsContent value="lockers">
@@ -552,6 +688,101 @@ const CommunityManager = () => {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="residents">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Resident Management</CardTitle>
+                    <CardDescription>Approve or reject resident registrations</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Pending Residents Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Pending Approval</h3>
+                  {pendingResidents.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Apartment</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingResidents.map(resident => (
+                          <TableRow key={resident.id}>
+                            <TableCell className="font-medium">{resident.name}</TableCell>
+                            <TableCell>{resident.email}</TableCell>
+                            <TableCell>{resident.phone}</TableCell>
+                            <TableCell>{resident.apartment}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="border-green-500 text-green-500 hover:bg-green-50"
+                                onClick={() => handleResidentApproval(resident.id, true)}
+                              >
+                                <Check className="h-4 w-4 mr-1" /> Approve
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="border-red-500 text-red-500 hover:bg-red-50"
+                                onClick={() => handleResidentApproval(resident.id, false)}
+                              >
+                                <X className="h-4 w-4 mr-1" /> Reject
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-4 bg-muted/30 rounded-md">
+                      <p className="text-muted-foreground">No pending resident applications</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Approved Residents Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Approved Residents</h3>
+                  {residents.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Apartment</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {residents.map(resident => (
+                          <TableRow key={resident.id}>
+                            <TableCell className="font-medium">{resident.name}</TableCell>
+                            <TableCell>{resident.email}</TableCell>
+                            <TableCell>{resident.phone}</TableCell>
+                            <TableCell>{resident.apartment}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-4 bg-muted/30 rounded-md">
+                      <p className="text-muted-foreground">No approved residents yet</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

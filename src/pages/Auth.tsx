@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -32,8 +33,10 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [communityId, setCommunityId] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [apartment, setApartment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState('resident');
@@ -135,11 +138,23 @@ const Auth = () => {
           });
           navigate('/community-manager'); // Staff currently goes to same page as manager
         } else {
-          toast({
-            title: "Login Successful",
-            description: "Welcome back to LockerHub!",
-          });
-          navigate('/dashboard');
+          // Check if this resident has been approved
+          const approvedResidents = JSON.parse(localStorage.getItem('approvedResidents') || '[]');
+          const isApproved = approvedResidents.some((resident: any) => resident.email === email);
+          
+          if (isApproved) {
+            toast({
+              title: "Login Successful",
+              description: "Welcome back to LockerHub!",
+            });
+            navigate('/dashboard');
+          } else {
+            toast({
+              title: "Account Pending Approval",
+              description: "Your registration is pending approval by your community manager.",
+              variant: "destructive",
+            });
+          }
         }
       } else {
         toast({
@@ -157,10 +172,22 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Updated registration data to include multiple locker systems
+    // Validate password match
+    if (password !== confirmPassword) {
+      toast({
+        title: "Password Error",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    // Updated registration data to include multiple locker systems and phone
     const registrationData = {
       name,
       email,
+      phone,
       communityId,
       userType,
       apartment: userType === 'resident' ? apartment : '',
@@ -183,23 +210,23 @@ const Auth = () => {
     
     console.log('Registration data:', registrationData);
     
+    // Store the registration data in localStorage so we can use it later
+    localStorage.setItem('registrationData', JSON.stringify(registrationData));
+    
     // Mock registration - in a real app this would call an API
     setTimeout(() => {
-      // Store the registration data in localStorage so we can use it later
-      localStorage.setItem('registrationData', JSON.stringify(registrationData));
-      
-      toast({
-        title: "Registration Successful",
-        description: userType === 'manager' 
-          ? `Your community with ${totalLockerCount} lockers across ${lockerSystems.length} locker systems has been created.`
-          : "Your account has been created. You can now log in.",
-      });
-      
-      // If they're registering as a manager, navigate them to the community manager page
       if (userType === 'manager') {
+        toast({
+          title: "Registration Successful",
+          description: `Your community with ${totalLockerCount} lockers across ${lockerSystems.length} locker systems has been created.`
+        });
         navigate('/community-manager');
       } else {
-        // Otherwise, just switch to login tab
+        toast({
+          title: "Registration Pending",
+          description: "Your registration has been submitted and is pending approval from your community manager.",
+        });
+        // Switch to login tab
         setActiveTab('login');
       }
       
@@ -447,7 +474,7 @@ const Auth = () => {
                                           id={`small-lockers-${system.id}`}
                                           type="number"
                                           min="0"
-                                          value={system.lockers.small}
+                                          value={system.lockers.small.toString()}
                                           onChange={(e) => updateLockerCount(system.id, 'small', e.target.value)}
                                         />
                                       </div>
@@ -457,7 +484,7 @@ const Auth = () => {
                                           id={`medium-lockers-${system.id}`}
                                           type="number"
                                           min="0"
-                                          value={system.lockers.medium}
+                                          value={system.lockers.medium.toString()}
                                           onChange={(e) => updateLockerCount(system.id, 'medium', e.target.value)}
                                         />
                                       </div>
@@ -467,7 +494,7 @@ const Auth = () => {
                                           id={`large-lockers-${system.id}`}
                                           type="number"
                                           min="0"
-                                          value={system.lockers.large}
+                                          value={system.lockers.large.toString()}
                                           onChange={(e) => updateLockerCount(system.id, 'large', e.target.value)}
                                         />
                                       </div>
@@ -498,6 +525,18 @@ const Auth = () => {
                         required
                       />
                     </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input 
+                        id="phone" 
+                        placeholder="555-123-4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="register-email">Email</Label>
                       <Input 
@@ -517,6 +556,18 @@ const Auth = () => {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input 
+                        id="confirm-password" 
+                        type="password" 
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                       />
                     </div>
@@ -542,6 +593,11 @@ const Auth = () => {
                             onChange={(e) => setApartment(e.target.value)}
                             required
                           />
+                        </div>
+                        <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                          <p className="text-sm text-amber-700">
+                            Note: Your registration will be pending until approved by your community manager.
+                          </p>
                         </div>
                       </>
                     )}
