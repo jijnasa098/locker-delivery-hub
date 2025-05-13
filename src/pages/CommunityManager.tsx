@@ -260,6 +260,13 @@ const CommunityManager = () => {
     systemId: selectedSystemId,
   });
 
+  // Add the missing removeLockerFormData state
+  const [removeLockerFormData, setRemoveLockerFormData] = useState({
+    count: 1,
+    size: 'small' as 'small' | 'medium' | 'large',
+    systemId: selectedSystemId,
+  });
+
   const handleLogout = () => {
     toast({
       title: "Logged Out",
@@ -276,6 +283,12 @@ const CommunityManager = () => {
   const handleLockerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLockerFormData(prev => ({ ...prev, [name]: value as any }));
+  };
+
+  // Add the missing handler for remove locker form
+  const handleRemoveLockerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setRemoveLockerFormData(prev => ({ ...prev, [name]: value as any }));
   };
 
   const handleSystemFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
