@@ -1,4 +1,3 @@
-
 // Types
 export interface User {
   id: string;
@@ -25,9 +24,19 @@ export interface Package {
 
 export interface Locker {
   id: number;
-  size: "small" | "medium" | "large";
-  status: "available" | "occupied";
-  packageId?: string;
+  size: 'small' | 'medium' | 'large';
+  status: 'available' | 'occupied';
+  packageDetails?: {
+    id: string;
+    recipientName: string;
+    productId: string;
+    trackingNumber?: string;
+    comments?: string;
+    placedBy: string;
+    placedAt: Date;
+    retrievedBy?: string;
+    retrievedAt?: Date;
+  };
 }
 
 // Mock users
@@ -96,18 +105,22 @@ export const packages: Package[] = [
   },
 ];
 
-// Mock lockers
-export const lockers: Locker[] = [
-  { id: 1, size: "small", status: "available" },
-  { id: 2, size: "small", status: "available" },
-  { id: 3, size: "medium", status: "occupied", packageId: "p1" },
-  { id: 4, size: "medium", status: "available" },
-  { id: 5, size: "large", status: "occupied", packageId: "p3" },
-  { id: 6, size: "large", status: "available" },
-  { id: 7, size: "small", status: "available" },
-  { id: 8, size: "medium", status: "available" },
-  { id: 9, size: "large", status: "available" },
-];
+// Generate lockers with the updated interface
+export const lockers: Locker[] = Array.from({ length: 24 }, (_, i) => ({
+  id: i + 1,
+  size: i % 3 === 0 ? 'small' : i % 3 === 1 ? 'medium' : 'large',
+  status: i % 5 === 0 ? 'occupied' : 'available',
+  ...(i % 5 === 0 && {
+    packageDetails: {
+      id: `pkg_${i}`,
+      recipientName: `Resident ${i}`,
+      productId: `PROD-${1000 + i}`,
+      trackingNumber: `TRK-${2000 + i}`,
+      placedBy: 'System Admin',
+      placedAt: new Date(Date.now() - Math.random() * 1000000000),
+    }
+  })
+}));
 
 // Helper functions
 export const getUserPackages = (userId: string): Package[] => {

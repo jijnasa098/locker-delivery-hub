@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -9,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus } from 'lucide-react';
+import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus, PackageOpen } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
-import LockerMap from '@/components/LockerMap';
+import LockerMap, { PackageDetails } from '@/components/LockerMap';
 import { lockers as mockLockers } from '@/lib/mockData';
 
 // Define consistent interfaces
