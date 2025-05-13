@@ -47,7 +47,6 @@ interface RegistrationData {
   userType: string;
   phone?: string;
   apartment?: string;
-  lockerSettings?: LockerSettings;
 }
 
 // Updated resident interface with pending approval status
@@ -62,12 +61,19 @@ interface Resident {
   role: 'resident';
 }
 
-// Updated Locker interface with systemId
+// Updated Locker interface with systemId and fixed status type to match mockData
 interface Locker {
   id: number;
   systemId: number;
   size: 'small' | 'medium' | 'large';
-  status: 'available' | 'occupied' | 'maintenance';
+  status: 'available' | 'occupied';
+}
+
+// Interface for the locker system
+interface LockerSystem {
+  id: number;
+  name: string;
+  location: string;
 }
 
 const CommunityManager = () => {
@@ -116,16 +122,21 @@ const CommunityManager = () => {
   ]);
   
   // Locker systems state
-  const [lockerSystems, setLockerSystems] = useState<Array<{
-    id: number;
-    name: string;
-    location: string;
-  }>>([
+  const [lockerSystems, setLockerSystems] = useState<LockerSystem[]>([
     { id: 1, name: 'Main Building', location: 'Lobby' }
   ]);
   
   // Currently selected locker system for viewing
   const [selectedSystemId, setSelectedSystemId] = useState<number>(1);
+
+  // Dialog states
+  const [showAddLockerSystemDialog, setShowAddLockerSystemDialog] = useState(false);
+  
+  // System form data
+  const [systemFormData, setSystemFormData] = useState({
+    name: '',
+    location: ''
+  });
 
   // Get registration data from localStorage if available
   useEffect(() => {
@@ -143,33 +154,14 @@ const CommunityManager = () => {
             communityName: parsedData.communityId, // Using the community ID as the name for simplicity
           });
           
-          // If we have locker settings, create the lockers based on that
-          if (parsedData.lockerSettings && parsedData.lockerSettings.systems) {
-            // Set the locker systems
-            setLockerSystems(parsedData.lockerSettings.systems.map(system => ({
-              id: system.id,
-              name: system.name,
-              location: system.location
-            })));
-            
-            // Set the default selected system to the first one
-            if (parsedData.lockerSettings.systems.length > 0) {
-              setSelectedSystemId(parsedData.lockerSettings.systems[0].id);
-            }
-            
-            // Generate all lockers from all systems
-            const generatedLockers = generateLockersFromSettings(parsedData.lockerSettings);
-            setLockers(generatedLockers);
-          } else {
-            // Fall back to initial lockers if no settings
-            // We need to convert mockLockers to match our Locker interface by adding systemId
-            const convertedLockers: Locker[] = mockLockers.map(locker => ({
-              ...locker,
-              systemId: 1, // Assign all to default system ID
-              status: locker.status as 'available' | 'occupied' | 'maintenance'
-            }));
-            setLockers(convertedLockers);
-          }
+          // We're now using mockLockers as default initial data
+          // We need to convert mockLockers to match our Locker interface by adding systemId
+          const convertedLockers: Locker[] = mockLockers.map(locker => ({
+            ...locker,
+            systemId: 1, // Assign all to default system ID
+            status: locker.status as 'available' | 'occupied'
+          }));
+          setLockers(convertedLockers);
         }
         
         // Check if there's a pending resident registration to add
@@ -227,51 +219,10 @@ const CommunityManager = () => {
     }
   }, []);
   
-  // Generate lockers based on registration settings
-  const generateLockersFromSettings = (settings: LockerSettings): Locker[] => {
-    const newLockers: Locker[] = [];
-    let globalLockerId = 1;
-    
-    // For each locker system
-    settings.systems.forEach(system => {
-      // Add small lockers
-      for (let i = 0; i < system.lockers.small; i++) {
-        newLockers.push({
-          id: globalLockerId++,
-          systemId: system.id,
-          size: 'small',
-          status: 'available'
-        });
-      }
-      
-      // Add medium lockers
-      for (let i = 0; i < system.lockers.medium; i++) {
-        newLockers.push({
-          id: globalLockerId++,
-          systemId: system.id,
-          size: 'medium',
-          status: 'available'
-        });
-      }
-      
-      // Add large lockers
-      for (let i = 0; i < system.lockers.large; i++) {
-        newLockers.push({
-          id: globalLockerId++,
-          systemId: system.id,
-          size: 'large',
-          status: 'available'
-        });
-      }
-    });
-    
-    return newLockers;
-  };
-  
   // Filter lockers by selected system
   const filteredLockers = lockers.filter(locker => locker.systemId === selectedSystemId);
   
-  // States
+  // States for staff management
   const [staffMembers, setStaffMembers] = useState<Staff[]>([
     { 
       id: 'staff1', 
@@ -325,6 +276,11 @@ const CommunityManager = () => {
   const handleLockerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLockerFormData(prev => ({ ...prev, [name]: value as any }));
+  };
+
+  const handleSystemFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSystemFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddStaff = () => {
@@ -392,6 +348,39 @@ const CommunityManager = () => {
     toast({
       title: "Lockers Added",
       description: `${lockerFormData.count} new ${lockerFormData.size} lockers have been added to ${lockerSystems.find(s => s.id === lockerFormData.systemId)?.name}.`,
+    });
+  };
+
+  const handleAddLockerSystem = () => {
+    // Validate required fields
+    if (!systemFormData.name || !systemFormData.location) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the next system ID
+    const nextId = lockerSystems.length > 0 
+      ? Math.max(...lockerSystems.map(system => system.id)) + 1 
+      : 1;
+
+    const newSystem: LockerSystem = {
+      id: nextId,
+      name: systemFormData.name,
+      location: systemFormData.location
+    };
+
+    setLockerSystems([...lockerSystems, newSystem]);
+    setSelectedSystemId(nextId); // Select the new system
+    setShowAddLockerSystemDialog(false);
+    setSystemFormData({ name: '', location: '' });
+
+    toast({
+      title: "Locker System Added",
+      description: `${systemFormData.name} has been added. You can now add lockers to this system.`,
     });
   };
 
@@ -529,10 +518,16 @@ const CommunityManager = () => {
                     <CardTitle>Locker Systems</CardTitle>
                     <CardDescription>Manage all lockers in the community</CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddLockerDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Lockers
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => setShowAddLockerSystemDialog(true)} variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Locker System
+                    </Button>
+                    <Button onClick={() => setShowAddLockerDialog(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Lockers
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -926,6 +921,48 @@ const CommunityManager = () => {
             </Button>
             <Button onClick={handleAddLockers}>
               Add Lockers
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Locker System Dialog */}
+      <Dialog open={showAddLockerSystemDialog} onOpenChange={setShowAddLockerSystemDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Locker System</DialogTitle>
+            <DialogDescription>
+              Create a new locker system location for your community.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">System Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={systemFormData.name}
+                onChange={handleSystemFormChange}
+                placeholder="e.g., Main Building, Pool House, etc."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                name="location"
+                value={systemFormData.location}
+                onChange={handleSystemFormChange}
+                placeholder="e.g., Lobby, North Entrance, etc."
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddLockerSystemDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddLockerSystem} disabled={!systemFormData.name || !systemFormData.location}>
+              Add System
             </Button>
           </div>
         </DialogContent>

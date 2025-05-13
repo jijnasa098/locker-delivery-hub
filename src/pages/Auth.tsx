@@ -8,21 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, User, Building, Plus, Trash } from 'lucide-react';
+import { Package, User, Building } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { users } from '@/lib/mockData';
-
-// Define interface for locker system
-interface LockerSystem {
-  id: number;
-  name: string;
-  location: string;
-  lockers: {
-    small: number;
-    medium: number;
-    large: number;
-  };
-}
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -40,74 +28,6 @@ const Auth = () => {
   const [apartment, setApartment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState('resident');
-  
-  // Updated to handle multiple locker systems
-  const [lockerSystems, setLockerSystems] = useState<LockerSystem[]>([{
-    id: 1,
-    name: 'Main Building',
-    location: 'Lobby',
-    lockers: {
-      small: 5,
-      medium: 3,
-      large: 2
-    }
-  }]);
-  
-  // Function to add a new locker system
-  const addLockerSystem = () => {
-    const newId = lockerSystems.length > 0 ? Math.max(...lockerSystems.map(ls => ls.id)) + 1 : 1;
-    setLockerSystems([...lockerSystems, {
-      id: newId,
-      name: `Locker System ${newId}`,
-      location: '',
-      lockers: {
-        small: 5,
-        medium: 3,
-        large: 2
-      }
-    }]);
-  };
-  
-  // Function to remove a locker system
-  const removeLockerSystem = (id: number) => {
-    // Don't allow removing the last locker system
-    if (lockerSystems.length <= 1) {
-      toast({
-        title: "Cannot Remove",
-        description: "You need at least one locker system.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setLockerSystems(lockerSystems.filter(ls => ls.id !== id));
-  };
-  
-  // Function to update locker system details
-  const updateLockerSystem = (id: number, field: string, value: string) => {
-    setLockerSystems(lockerSystems.map(ls => 
-      ls.id === id ? { ...ls, [field]: value } : ls
-    ));
-  };
-  
-  // Function to update locker counts within a system
-  const updateLockerCount = (systemId: number, size: 'small' | 'medium' | 'large', value: string) => {
-    const numValue = parseInt(value) || 0;
-    setLockerSystems(lockerSystems.map(ls => 
-      ls.id === systemId ? { 
-        ...ls, 
-        lockers: { 
-          ...ls.lockers, 
-          [size]: numValue 
-        } 
-      } : ls
-    ));
-  };
-  
-  // Calculate total locker count
-  const totalLockerCount = lockerSystems.reduce((total, system) => {
-    const { small, medium, large } = system.lockers;
-    return total + small + medium + large;
-  }, 0);
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,29 +103,14 @@ const Auth = () => {
       return;
     }
     
-    // Updated registration data to include multiple locker systems and phone
+    // Simplified registration data without locker system details
     const registrationData = {
       name,
       email,
       phone,
       communityId,
       userType,
-      apartment: userType === 'resident' ? apartment : '',
-      ...(userType === 'manager' && {
-        lockerSettings: {
-          systems: lockerSystems.map(system => ({
-            id: system.id,
-            name: system.name,
-            location: system.location,
-            lockers: {
-              small: system.lockers.small,
-              medium: system.lockers.medium,
-              large: system.lockers.large
-            }
-          })),
-          totalLockers: totalLockerCount
-        }
-      })
+      apartment: userType === 'resident' ? apartment : ''
     };
     
     console.log('Registration data:', registrationData);
@@ -218,7 +123,7 @@ const Auth = () => {
       if (userType === 'manager') {
         toast({
           title: "Registration Successful",
-          description: `Your community with ${totalLockerCount} lockers across ${lockerSystems.length} locker systems has been created.`
+          description: "Your community has been created. You can now add locker systems from your dashboard."
         });
         navigate('/community-manager');
       } else {
@@ -404,114 +309,18 @@ const Auth = () => {
                     </div>
                     
                     {userType === 'manager' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="community-id">Community Name/ID</Label>
-                          <Input 
-                            id="community-id"
-                            value={communityId}
-                            onChange={(e) => setCommunityId(e.target.value)}
-                            placeholder="E.g., Green Valley Apartments"
-                            required
-                          />
-                        </div>
-                        
-                        <div className="border rounded-md p-4 bg-muted/20 space-y-4">
-                          <div className="flex justify-between items-center">
-                            <h3 className="text-sm font-medium">Locker Systems Setup</h3>
-                            <Button 
-                              type="button" 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={addLockerSystem}
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Add System
-                            </Button>
-                          </div>
-                          
-                          <div className="space-y-6">
-                            {lockerSystems.map((system) => (
-                              <div key={system.id} className="border rounded p-3 space-y-3 bg-background">
-                                <div className="flex justify-between items-center">
-                                  <h4 className="font-medium">System #{system.id}</h4>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => removeLockerSystem(system.id)}
-                                  >
-                                    <Trash className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                  <div>
-                                    <Label htmlFor={`system-name-${system.id}`}>Name</Label>
-                                    <Input 
-                                      id={`system-name-${system.id}`}
-                                      value={system.name}
-                                      onChange={(e) => updateLockerSystem(system.id, 'name', e.target.value)}
-                                      placeholder="System name"
-                                    />
-                                  </div>
-                                  
-                                  <div>
-                                    <Label htmlFor={`system-location-${system.id}`}>Location</Label>
-                                    <Input 
-                                      id={`system-location-${system.id}`}
-                                      value={system.location}
-                                      onChange={(e) => updateLockerSystem(system.id, 'location', e.target.value)}
-                                      placeholder="Where this locker system is located"
-                                    />
-                                  </div>
-                                  
-                                  <div>
-                                    <Label>Locker Distribution</Label>
-                                    <div className="grid grid-cols-3 gap-3 mt-2">
-                                      <div>
-                                        <Label htmlFor={`small-lockers-${system.id}`} className="text-xs">Small</Label>
-                                        <Input 
-                                          id={`small-lockers-${system.id}`}
-                                          type="number"
-                                          min="0"
-                                          value={system.lockers.small.toString()}
-                                          onChange={(e) => updateLockerCount(system.id, 'small', e.target.value)}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor={`medium-lockers-${system.id}`} className="text-xs">Medium</Label>
-                                        <Input 
-                                          id={`medium-lockers-${system.id}`}
-                                          type="number"
-                                          min="0"
-                                          value={system.lockers.medium.toString()}
-                                          onChange={(e) => updateLockerCount(system.id, 'medium', e.target.value)}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor={`large-lockers-${system.id}`} className="text-xs">Large</Label>
-                                        <Input 
-                                          id={`large-lockers-${system.id}`}
-                                          type="number"
-                                          min="0"
-                                          value={system.lockers.large.toString()}
-                                          onChange={(e) => updateLockerCount(system.id, 'large', e.target.value)}
-                                        />
-                                      </div>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      System Total: {system.lockers.small + system.lockers.medium + system.lockers.large} lockers
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <p className="text-sm font-medium mt-2">
-                            Total Lockers: {totalLockerCount}
-                          </p>
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="community-id">Community Name/ID</Label>
+                        <Input 
+                          id="community-id"
+                          value={communityId}
+                          onChange={(e) => setCommunityId(e.target.value)}
+                          placeholder="E.g., Green Valley Apartments"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          You'll be able to set up locker systems from your dashboard after registration.
+                        </p>
                       </div>
                     )}
                     
