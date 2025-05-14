@@ -87,38 +87,14 @@ const LockerGrid: React.FC<LockerGridProps> = ({
       <div className="space-y-6">
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rows">Grid Layout</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="rows" 
-                    type="number" 
-                    value={rows} 
-                    onChange={handleRowChange}
-                    min={1}
-                    className="w-24"
-                  />
-                  <span className="text-sm text-muted-foreground">×</span>
-                  <Input 
-                    id="columns" 
-                    type="number" 
-                    value={columns} 
-                    onChange={handleColumnChange}
-                    min={1} 
-                    className="w-24"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Rows × Columns</p>
-              </div>
-              
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-end">
               <div className="space-y-2">
                 <Label htmlFor="lockerSize">Locker Size</Label>
                 <Select 
                   value={lockerSize} 
                   onValueChange={(value) => setLockerSize(value as 'small' | 'medium' | 'large')}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
                   <SelectContent>
@@ -129,25 +105,42 @@ const LockerGrid: React.FC<LockerGridProps> = ({
                 </Select>
               </div>
 
-              <div className="space-y-2 flex flex-col">
-                <Label className="mb-2">Actions</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    onClick={handleAddLockers}
-                    className="flex-1"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add {rows * columns} {lockerSize} Lockers
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="border-red-200 text-red-600 hover:bg-red-50 flex-1"
-                    onClick={() => handleRemoveLockers(rows * columns)}
-                  >
-                    <Minus className="mr-2 h-4 w-4" />
-                    Remove Lockers
-                  </Button>
+              <div className="space-y-2 hidden">
+                <Label>Grid Size</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="number" 
+                    value={rows} 
+                    onChange={handleRowChange}
+                    min={1} 
+                    className="w-20"
+                  />
+                  <span>×</span>
+                  <Input 
+                    type="number" 
+                    value={columns} 
+                    onChange={handleColumnChange}
+                    min={1} 
+                    className="w-20"
+                  />
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  onClick={handleAddLockers}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add {rows * columns} {lockerSize} Lockers
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => handleRemoveLockers(rows * columns)}
+                >
+                  <Minus className="mr-2 h-4 w-4" />
+                  Remove {rows * columns} Lockers
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -176,6 +169,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
               onPackageStore={onPackageStore}
               onPackageRetrieve={onPackageRetrieve}
               currentUser={currentUser}
+              hideEmptySlots={true}
             />
             
             <div className="bg-muted p-4 rounded-md mt-4">
