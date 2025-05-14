@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus, PackageOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns'; // Import format from date-fns
 import Navbar from '@/components/Navbar';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
 import LockerGrid from '@/components/LockerGrid';
@@ -68,6 +69,7 @@ interface Locker {
   systemId: number;
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied';
+  packageDetails?: PackageDetails; // Add packageDetails
 }
 
 // Interface for the locker system
@@ -346,27 +348,33 @@ const CommunityManager = () => {
     });
   };
 
-  const handleAddLockers = () => {
+  // Function to create lockers based on rows and columns
+  const createLockersWithGridLayout = (count: number, size: 'small' | 'medium' | 'large', systemId: number) => {
     // Get the current highest locker ID
     const currentHighestId = lockers.length > 0 ? Math.max(...lockers.map(locker => locker.id)) : 0;
     
-    // Create new lockers with the selected system ID
-    const newLockers = Array.from({ length: lockerFormData.count }, (_, index) => ({
+    // Create new lockers with sequential IDs
+    const newLockers = Array.from({ length: count }, (_, index) => ({
       id: currentHighestId + index + 1,
-      systemId: lockerFormData.systemId,
-      size: lockerFormData.size,
+      systemId: systemId,
+      size: size,
       status: 'available' as const
     }));
 
     // Add the new lockers to the existing ones
     setLockers([...lockers, ...newLockers]);
-    setShowAddLockerDialog(false);
-    setLockerFormData({ count: 1, size: 'small', systemId: selectedSystemId });
     
     toast({
       title: "Lockers Added",
-      description: `${lockerFormData.count} new ${lockerFormData.size} lockers have been added to ${lockerSystems.find(s => s.id === lockerFormData.systemId)?.name}.`,
+      description: `${count} new ${size} lockers have been added to ${lockerSystems.find(s => s.id === systemId)?.name}.`,
     });
+  }
+
+  const handleAddLockers = () => {
+    // Use the new function to create lockers with grid layout
+    createLockersWithGridLayout(lockerFormData.count, lockerFormData.size, lockerFormData.systemId);
+    setShowAddLockerDialog(false);
+    setLockerFormData({ count: 1, size: 'small', systemId: selectedSystemId });
   };
 
   const handleAddLockerSystem = () => {

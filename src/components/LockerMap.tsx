@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { Locker } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
 import { Box, Lock, Package, PackageOpen, Unlock, Key } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,16 @@ export interface PackageDetails {
   placedAt: Date;
   retrievedBy?: string;
   retrievedAt?: Date;
-  otp?: string;
+  otp?: string; // Add OTP property
+}
+
+// Locker interface to match the one in LockerGrid
+interface Locker {
+  id: number;
+  systemId: number;
+  size: 'small' | 'medium' | 'large';
+  status: 'available' | 'occupied';
+  packageDetails?: PackageDetails;
 }
 
 interface LockerMapProps {
@@ -139,7 +147,7 @@ const LockerMap = ({
   };
 
   const handleVerifyOTP = () => {
-    if (!selectedLocker || !currentUser || !selectedLocker.packageDetails) return;
+    if (!selectedLocker || !currentUser || !selectedLocker.packageDetails || !selectedLocker.packageDetails.otp) return;
 
     if (otpInput === selectedLocker.packageDetails.otp) {
       if (onPackageRetrieve) {
@@ -372,8 +380,8 @@ const LockerMap = ({
                   maxLength={6} 
                   render={({ slots }) => (
                     <InputOTPGroup>
-                      {slots.map((slot, index) => (
-                        <InputOTPSlot key={index} {...slot} />
+                      {slots.map((slot, i) => (
+                        <InputOTPSlot key={i} {...slot} />
                       ))}
                     </InputOTPGroup>
                   )}

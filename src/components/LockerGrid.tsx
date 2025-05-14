@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { Locker } from '@/lib/mockData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, Package } from 'lucide-react';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
+
+// Updated Locker interface to include packageDetails and systemId
+interface Locker {
+  id: number;
+  systemId: number;
+  size: 'small' | 'medium' | 'large';
+  status: 'available' | 'occupied';
+  packageDetails?: PackageDetails;
+}
 
 interface LockerGridProps {
   lockers: Locker[];
