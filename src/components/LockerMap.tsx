@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Box, Lock, Package, PackageOpen, Unlock, Key } from 'lucide-react';
@@ -32,6 +31,8 @@ interface Locker {
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied';
   packageDetails?: PackageDetails;
+  row?: number;
+  column?: number;
 }
 
 interface LockerMapProps {
@@ -108,80 +109,24 @@ const LockerMap = ({
     }
   };
 
-  // Generate a random 6-digit OTP
-  const generateOTP = (): string => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
-  const handleStorePackage = () => {
-    if (!selectedLocker || !currentUser) return;
-
-    const otp = generateOTP();
-    
-    const completePackageDetails: PackageDetails = {
-      id: `pkg_${Date.now()}`,
-      recipientName: packageDetails.recipientName || '',
-      productId: packageDetails.productId || '',
-      trackingNumber: packageDetails.trackingNumber || '',
-      comments: packageDetails.comments || '',
-      placedBy: currentUser.name,
-      placedAt: new Date(),
-      otp: otp
-    };
-
-    if (onPackageStore) {
-      onPackageStore(selectedLocker.id, completePackageDetails);
-    }
-
-    toast({
-      title: "Package Stored Successfully",
-      description: `OTP: ${otp} - Share this with the recipient for retrieval.`,
-    });
-
-    setShowDialog(false);
-  };
-
-  const handleRetrieveRequest = () => {
-    if (!selectedLocker || !selectedLocker.packageDetails) return;
-    setDialogMode('otp-verify');
-  };
-
-  const handleVerifyOTP = () => {
-    if (!selectedLocker || !currentUser || !selectedLocker.packageDetails || !selectedLocker.packageDetails.otp) return;
-
-    if (otpInput === selectedLocker.packageDetails.otp) {
-      if (onPackageRetrieve) {
-        onPackageRetrieve(selectedLocker.id, currentUser.name);
-      }
-
-      toast({
-        title: "Package Retrieved Successfully",
-        description: "OTP verified. You may collect your package.",
-      });
-
-      setShowDialog(false);
-      setOtpInput('');
-    } else {
-      toast({
-        title: "Invalid OTP",
-        description: "The OTP you entered is incorrect. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Organize lockers in a grid based on rows and columns
+  // Create a grid representation for displaying lockers
   const organizeLockersByGrid = () => {
-    const grid: Locker[][] = Array(rows).fill(null).map(() => Array(columns).fill(null));
+    const grid: (Locker | null)[][] = Array(rows).fill(null).map(() => Array(columns).fill(null));
     
     lockers.forEach(locker => {
-      // Extract row and column from locker ID (assuming format: row*columns + column)
-      // For example, with 5 columns: locker ID 7 would be in row 1, column 2 (0-indexed)
-      const row = Math.floor((locker.id - 1) / columns);
-      const col = (locker.id - 1) % columns;
-      
-      if (row < rows && col < columns) {
-        grid[row][col] = locker;
+      // If locker has explicit row/column values, use those
+      if (locker.row !== undefined && locker.column !== undefined) {
+        if (locker.row < rows && locker.column < columns) {
+          grid[locker.row][locker.column] = locker;
+        }
+      } else {
+        // Otherwise compute position from ID (legacy support)
+        const row = Math.floor((locker.id - 1) / columns);
+        const col = (locker.id - 1) % columns;
+        
+        if (row < rows && col < columns) {
+          grid[row][col] = locker;
+        }
       }
     });
     
@@ -190,11 +135,16 @@ const LockerMap = ({
 
   const lockerGrid = organizeLockersByGrid();
   
-  // Format locker number to show row/column format (e.g., "01", "02", etc.)
-  const formatLockerNumber = (lockerId: number): string => {
-    const row = Math.floor((lockerId - 1) / columns) + 1;
-    const col = ((lockerId - 1) % columns) + 1;
-    return `${row.toString().padStart(2, '0')}${col.toString().padStart(2, '0')}`;
+  // Format locker number to show row/column format (e.g., "01-02")
+  const formatLockerNumber = (locker: Locker): string => {
+    if (locker.row !== undefined && locker.column !== undefined) {
+      return `${(locker.row + 1).toString().padStart(2, '0')}-${(locker.column + 1).toString().padStart(2, '0')}`;
+    } else {
+      // Legacy support
+      const row = Math.floor((locker.id - 1) / columns) + 1;
+      const col = ((locker.id - 1) % columns) + 1;
+      return `${row.toString().padStart(2, '0')}-${col.toString().padStart(2, '0')}`;
+    }
   };
 
   return (
@@ -237,13 +187,13 @@ const LockerMap = ({
                             {getLockerIcon(locker)}
                           </div>
                           <Badge variant="outline" className="text-xs px-1.5 py-0">
-                            {formatLockerNumber(locker.id)}
+                            {formatLockerNumber(locker)}
                           </Badge>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="text-sm">
-                          <p>Locker #{formatLockerNumber(locker.id)}</p>
+                          <p>Locker #{formatLockerNumber(locker)}</p>
                           <p className="capitalize">Size: {locker.size}</p>
                           <p>Status: {locker.status}</p>
                           {locker.status === 'occupied' && locker.packageDetails && (
@@ -275,11 +225,13 @@ const LockerMap = ({
               {dialogMode === 'otp-verify' && 'Enter OTP to Retrieve Package'}
             </DialogTitle>
             <DialogDescription>
-              {dialogMode === 'store'
-                ? `Enter the package details to store in Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`
-                : dialogMode === 'retrieve'
-                ? `Package details for Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`
-                : `Please enter the OTP sent to the recipient to unlock Locker #${selectedLocker ? formatLockerNumber(selectedLocker.id) : ''}`}
+              {dialogMode === 'store' && selectedLocker
+                ? `Enter the package details to store in Locker #${formatLockerNumber(selectedLocker)}`
+                : dialogMode === 'retrieve' && selectedLocker
+                ? `Package details for Locker #${formatLockerNumber(selectedLocker)}`
+                : dialogMode === 'otp-verify' && selectedLocker
+                ? `Please enter the OTP sent to the recipient to unlock Locker #${formatLockerNumber(selectedLocker)}`
+                : 'Loading locker details...'}
             </DialogDescription>
           </DialogHeader>
           

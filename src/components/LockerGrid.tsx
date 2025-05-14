@@ -16,13 +16,15 @@ interface Locker {
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied';
   packageDetails?: PackageDetails;
+  row?: number;
+  column?: number;
 }
 
 interface LockerGridProps {
   lockers: Locker[];
   lockerSystems: { id: number; name: string; location: string }[];
   selectedSystemId: number;
-  onAddLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
+  onAddLockers: (rows: number, columns: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
   onRemoveLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
   onRemoveSingleLocker: (lockerId: number) => void;
   onPackageStore?: (lockerId: number, packageDetails: PackageDetails) => void;
@@ -44,6 +46,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
   const { toast } = useToast();
   const [rows, setRows] = useState(5);
   const [columns, setColumns] = useState(6);
+  const [lockerSize, setLockerSize] = useState<'small' | 'medium' | 'large'>('small');
   const filteredLockers = lockers.filter(locker => locker.systemId === selectedSystemId);
 
   const handleRowChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +61,14 @@ const LockerGrid: React.FC<LockerGridProps> = ({
     if (!isNaN(value) && value > 0) {
       setColumns(value);
     }
+  };
+
+  const handleAddLockers = () => {
+    onAddLockers(rows, columns, lockerSize, selectedSystemId);
+  };
+
+  const handleRemoveLockers = (count: number) => {
+    onRemoveLockers(count, lockerSize, selectedSystemId);
   };
 
   const getLockerCounts = () => {
@@ -77,7 +88,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="rows">Grid Rows</Label>
+              <Label htmlFor="rows">Grid Layout</Label>
               <div className="flex items-center gap-2">
                 <Input 
                   id="rows" 
@@ -96,10 +107,41 @@ const LockerGrid: React.FC<LockerGridProps> = ({
                   min={1} 
                   className="w-32"
                 />
-                <Label htmlFor="columns" className="ml-2">Columns</Label>
               </div>
-              <p className="text-sm text-muted-foreground">Adjust grid layout to organize lockers</p>
+              <p className="text-sm text-muted-foreground">Number of rows × columns</p>
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="lockerSize">Locker Size</Label>
+              <Select 
+                value={lockerSize} 
+                onValueChange={(value) => setLockerSize(value as 'small' | 'medium' | 'large')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleAddLockers}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add {rows * columns} {lockerSize} Lockers
+            </Button>
+            <Button 
+              variant="outline" 
+              className="border-red-200 text-red-600 hover:bg-red-50"
+              onClick={() => handleRemoveLockers(rows * columns)}
+            >
+              <Minus className="mr-2 h-4 w-4" />
+              Remove {rows * columns} {lockerSize} Lockers
+            </Button>
           </div>
 
           <LockerMap 
@@ -158,7 +200,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
           <p className="text-muted-foreground mb-6">
             This locker system doesn't have any lockers yet.
           </p>
-          <Button onClick={() => onAddLockers(1, 'small', selectedSystemId)}>
+          <Button onClick={() => onAddLockers(rows, columns, lockerSize, selectedSystemId)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Lockers
           </Button>

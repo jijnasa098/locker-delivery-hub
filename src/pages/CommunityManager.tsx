@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -11,11 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Package, User, Lock, Plus, Trash, Edit, UserPlus, Check, X, Minus, PackageOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns'; // Import format from date-fns
+import { format } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
 import LockerGrid from '@/components/LockerGrid';
-import { lockers as mockLockers } from '@/lib/mockData';
 
 // Define consistent interfaces
 interface Staff {
@@ -63,13 +63,15 @@ interface Resident {
   role: 'resident';
 }
 
-// Updated Locker interface with systemId and fixed status type to match mockData
+// Updated Locker interface with systemId, row and column properties
 interface Locker {
   id: number;
   systemId: number;
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied';
-  packageDetails?: PackageDetails; // Add packageDetails
+  packageDetails?: PackageDetails;
+  row?: number;
+  column?: number;
 }
 
 // Interface for the locker system
@@ -93,7 +95,7 @@ const CommunityManager = () => {
     communityName: 'Green Valley Apartments',
   });
 
-  // Lockers state - now with systemId
+  // Lockers state - now with systemId, row and column
   const [lockers, setLockers] = useState<Locker[]>([]);
   
   // Pending residents awaiting approval
@@ -161,14 +163,8 @@ const CommunityManager = () => {
             communityName: parsedData.communityId, // Using the community ID as the name for simplicity
           });
           
-          // We're now using mockLockers as default initial data
-          // We need to convert mockLockers to match our Locker interface by adding systemId
-          const convertedLockers: Locker[] = mockLockers.map(locker => ({
-            ...locker,
-            systemId: 1, // Assign all to default system ID
-            status: locker.status as 'available' | 'occupied'
-          }));
-          setLockers(convertedLockers);
+          // Initialize with empty lockers instead of mock data
+          setLockers([]);
         }
         
         // Check if there's a pending resident registration to add
@@ -262,7 +258,8 @@ const CommunityManager = () => {
     communityId: manager.communityId,
   });
   const [lockerFormData, setLockerFormData] = useState({
-    count: 1,
+    rows: 5,
+    columns: 6,
     size: 'small' as 'small' | 'medium' | 'large',
     systemId: selectedSystemId,
   });
@@ -289,7 +286,12 @@ const CommunityManager = () => {
 
   const handleLockerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setLockerFormData(prev => ({ ...prev, [name]: value as any }));
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      setLockerFormData(prev => ({ ...prev, [name]: name === 'size' ? value : numValue }));
+    } else if (name === 'size') {
+      setLockerFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   // Add the missing handler for remove locker form
@@ -348,33 +350,46 @@ const CommunityManager = () => {
     });
   };
 
-  // Function to create lockers based on rows and columns
-  const createLockersWithGridLayout = (count: number, size: 'small' | 'medium' | 'large', systemId: number) => {
+  // Function to create lockers based on rows and columns with row-column based IDs
+  const createLockersWithGridLayout = (rows: number, columns: number, size: 'small' | 'medium' | 'large', systemId: number) => {
     // Get the current highest locker ID
     const currentHighestId = lockers.length > 0 ? Math.max(...lockers.map(locker => locker.id)) : 0;
     
-    // Create new lockers with sequential IDs
-    const newLockers = Array.from({ length: count }, (_, index) => ({
-      id: currentHighestId + index + 1,
-      systemId: systemId,
-      size: size,
-      status: 'available' as const
-    }));
+    // Create new lockers with grid layout
+    const newLockers: Locker[] = [];
+    let lockerId = currentHighestId + 1;
+    
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < columns; c++) {
+        newLockers.push({
+          id: lockerId++,
+          systemId: systemId,
+          size: size,
+          status: 'available',
+          row: r,
+          column: c
+        });
+      }
+    }
 
     // Add the new lockers to the existing ones
     setLockers([...lockers, ...newLockers]);
     
     toast({
       title: "Lockers Added",
-      description: `${count} new ${size} lockers have been added to ${lockerSystems.find(s => s.id === systemId)?.name}.`,
+      description: `${rows * columns} new ${size} lockers have been added to ${lockerSystems.find(s => s.id === systemId)?.name} in a ${rows}×${columns} grid.`,
     });
   }
 
   const handleAddLockers = () => {
     // Use the new function to create lockers with grid layout
-    createLockersWithGridLayout(lockerFormData.count, lockerFormData.size, lockerFormData.systemId);
+    createLockersWithGridLayout(
+      lockerFormData.rows, 
+      lockerFormData.columns, 
+      lockerFormData.size, 
+      lockerFormData.systemId
+    );
     setShowAddLockerDialog(false);
-    setLockerFormData({ count: 1, size: 'small', systemId: selectedSystemId });
   };
 
   const handleAddLockerSystem = () => {
@@ -418,9 +433,7 @@ const CommunityManager = () => {
     });
   };
 
-  const handleRemoveLockers = () => {
-    const { count, size, systemId } = removeLockerFormData;
-    
+  const handleRemoveLockers = (count: number, size: 'small' | 'medium' | 'large', systemId: number) => {
     // Filter to get lockers of the specified size and system
     const matchingLockers = lockers.filter(
       locker => locker.systemId === systemId && 
@@ -446,8 +459,6 @@ const CommunityManager = () => {
     
     // Remove the lockers
     setLockers(prevLockers => prevLockers.filter(locker => !lockersToRemove.includes(locker.id)));
-    
-    setShowRemoveLockerDialog(false);
     
     toast({
       title: "Lockers Removed",
@@ -697,14 +708,8 @@ const CommunityManager = () => {
                         lockers={lockers}
                         lockerSystems={lockerSystems}
                         selectedSystemId={selectedSystemId}
-                        onAddLockers={(count, size, systemId) => {
-                          setLockerFormData({ count, size, systemId });
-                          handleAddLockers();
-                        }}
-                        onRemoveLockers={(count, size, systemId) => {
-                          setRemoveLockerFormData({ count, size, systemId });
-                          handleRemoveLockers();
-                        }}
+                        onAddLockers={createLockersWithGridLayout}
+                        onRemoveLockers={handleRemoveLockers}
                         onRemoveSingleLocker={handleRemoveLocker}
                         onPackageStore={handlePackageStore}
                         onPackageRetrieve={handlePackageRetrieve}
@@ -1033,16 +1038,29 @@ const CommunityManager = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="count">Number of Lockers</Label>
-              <Input
-                id="count"
-                name="count"
-                type="number"
-                min="1"
-                value={lockerFormData.count}
-                onChange={handleLockerFormChange}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="rows">Rows</Label>
+                <Input
+                  id="rows"
+                  name="rows"
+                  type="number"
+                  min="1"
+                  value={lockerFormData.rows}
+                  onChange={handleLockerFormChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="columns">Columns</Label>
+                <Input
+                  id="columns"
+                  name="columns"
+                  type="number"
+                  min="1"
+                  value={lockerFormData.columns}
+                  onChange={handleLockerFormChange}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="size">Locker Size</Label>
@@ -1060,13 +1078,18 @@ const CommunityManager = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-sm">
+                This will add {lockerFormData.rows * lockerFormData.columns} {lockerFormData.size} lockers in a {lockerFormData.rows}×{lockerFormData.columns} grid.
+              </p>
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddLockerDialog(false)}>
               Cancel
             </Button>
             <Button onClick={handleAddLockers}>
-              Add Lockers
+              Add {lockerFormData.rows * lockerFormData.columns} Lockers
             </Button>
           </div>
         </DialogContent>
@@ -1203,7 +1226,7 @@ const CommunityManager = () => {
               Cancel
             </Button>
             <Button 
-              onClick={handleRemoveLockers}
+              onClick={() => handleRemoveLockers(removeLockerFormData.count, removeLockerFormData.size, removeLockerFormData.systemId)}
               variant="destructive"
               disabled={removeLockerFormData.count < 1}
             >
