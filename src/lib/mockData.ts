@@ -24,6 +24,7 @@ export interface Package {
 
 export interface Locker {
   id: number;
+  systemId: number; // Added systemId property to match LockerMap interface
   size: 'small' | 'medium' | 'large';
   status: 'available' | 'occupied';
   packageDetails?: {
@@ -36,7 +37,10 @@ export interface Locker {
     placedAt: Date;
     retrievedBy?: string;
     retrievedAt?: Date;
+    otp?: string; // Added OTP property
   };
+  row?: number; // Added row property
+  column?: number; // Added column property
 }
 
 // Mock users
@@ -105,11 +109,14 @@ export const packages: Package[] = [
   },
 ];
 
-// Generate lockers with the updated interface
+// Generate lockers with the updated interface including systemId
 export const lockers: Locker[] = Array.from({ length: 24 }, (_, i) => ({
   id: i + 1,
+  systemId: 1, // Default system ID
   size: i % 3 === 0 ? 'small' : i % 3 === 1 ? 'medium' : 'large',
   status: i % 5 === 0 ? 'occupied' : 'available',
+  row: Math.floor(i / 6), // Simple row calculation
+  column: i % 6, // Simple column calculation
   ...(i % 5 === 0 && {
     packageDetails: {
       id: `pkg_${i}`,
@@ -118,6 +125,7 @@ export const lockers: Locker[] = Array.from({ length: 24 }, (_, i) => ({
       trackingNumber: `TRK-${2000 + i}`,
       placedBy: 'System Admin',
       placedAt: new Date(Date.now() - Math.random() * 1000000000),
+      otp: '123456' // Added default OTP
     }
   })
 }));

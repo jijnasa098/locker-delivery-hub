@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Box, Lock, Package, PackageOpen, Unlock, Key } from 'lucide-react';
@@ -82,6 +83,56 @@ const LockerMap = ({
       return <Unlock className="h-6 w-6 text-green-500" />;
     } else {
       return <Lock className="h-6 w-6 text-red-500" />;
+    }
+  };
+
+  // Add missing handlers
+  const handleStorePackage = () => {
+    if (!selectedLocker || !currentUser || !onPackageStore) return;
+
+    // Generate a random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const newPackageDetails: PackageDetails = {
+      id: `pkg_${Date.now()}`,
+      recipientName: packageDetails.recipientName || '',
+      productId: packageDetails.productId || '',
+      trackingNumber: packageDetails.trackingNumber,
+      comments: packageDetails.comments,
+      placedBy: currentUser.name,
+      placedAt: new Date(),
+      otp: otp
+    };
+
+    onPackageStore(selectedLocker.id, newPackageDetails);
+    setShowDialog(false);
+    toast({
+      title: "Package Stored",
+      description: `Package for ${newPackageDetails.recipientName} has been stored with OTP: ${otp}`,
+    });
+  };
+
+  const handleRetrieveRequest = () => {
+    setDialogMode('otp-verify');
+  };
+
+  const handleVerifyOTP = () => {
+    if (!selectedLocker || !onPackageRetrieve || !currentUser) return;
+
+    // Verify OTP matches
+    if (selectedLocker.packageDetails?.otp === otpInput) {
+      onPackageRetrieve(selectedLocker.id, currentUser.name);
+      setShowDialog(false);
+      toast({
+        title: "Package Retrieved",
+        description: `Package has been successfully retrieved.`,
+      });
+    } else {
+      toast({
+        title: "Invalid OTP",
+        description: "The OTP you entered is incorrect. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -333,7 +384,7 @@ const LockerMap = ({
                   render={({ slots }) => (
                     <InputOTPGroup>
                       {slots.map((slot, i) => (
-                        <InputOTPSlot key={i} {...slot} />
+                        <InputOTPSlot key={i} {...slot} index={i} />
                       ))}
                     </InputOTPGroup>
                   )}
