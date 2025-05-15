@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Plus, Building, Package, Users, User, History, FileText, Lock, Key } from 'lucide-react';
 import LockerGrid from '@/components/LockerGrid';
 
@@ -193,6 +193,126 @@ const CommunityManager: React.FC = () => {
     toast({
       title: "Success",
       description: `Locker #${lockerId} has been removed.`
+    });
+  };
+
+  // Add staff member
+  const handleAddStaff = () => {
+    if (!newStaffData.name || !newStaffData.email) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide name and email for the staff member.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newId = staffMembers.length > 0 
+      ? Math.max(...staffMembers.map(staff => staff.id)) + 1 
+      : 1;
+
+    const newStaff = {
+      id: newId,
+      name: newStaffData.name,
+      role: newStaffData.role,
+      email: newStaffData.email,
+      phone: newStaffData.phone || '',
+      joinDate: new Date(),
+      communityId: communityId
+    };
+
+    setStaffMembers([...staffMembers, newStaff]);
+    setShowAddStaffDialog(false);
+    
+    // Reset form
+    setNewStaffData({
+      name: '',
+      role: 'staff',
+      email: '',
+      phone: ''
+    });
+
+    toast({
+      title: "Success",
+      description: `${newStaffData.name} has been added as a staff member.`
+    });
+  };
+
+  // Remove staff member
+  const handleRemoveStaff = (staffId: number) => {
+    setStaffMembers(staffMembers.filter(staff => staff.id !== staffId));
+    
+    toast({
+      title: "Success",
+      description: "Staff member has been removed."
+    });
+  };
+
+  // Add resident
+  const handleAddResident = () => {
+    if (!newResidentData.name || !newResidentData.email || !newResidentData.unit) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide name, email, and unit for the resident.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newId = residents.length > 0 
+      ? Math.max(...residents.map(resident => resident.id)) + 1 
+      : 1;
+
+    const newResident = {
+      id: newId,
+      name: newResidentData.name,
+      email: newResidentData.email,
+      unit: newResidentData.unit,
+      phone: newResidentData.phone || '',
+      status: newResidentData.status,
+      joinDate: new Date(),
+      communityId: communityId
+    };
+
+    setResidents([...residents, newResident]);
+    setShowAddResidentDialog(false);
+    
+    // Reset form
+    setNewResidentData({
+      name: '',
+      email: '',
+      unit: '',
+      phone: '',
+      status: 'pending'
+    });
+
+    toast({
+      title: "Success",
+      description: `${newResidentData.name} has been added as a resident.`
+    });
+  };
+
+  // Remove resident
+  const handleRemoveResident = (residentId: number) => {
+    setResidents(residents.filter(resident => resident.id !== residentId));
+    
+    toast({
+      title: "Success",
+      description: "Resident has been removed."
+    });
+  };
+
+  // Update resident status
+  const handleUpdateResidentStatus = (residentId: number, newStatus: 'active' | 'pending' | 'inactive') => {
+    setResidents(residents.map(resident => 
+      resident.id === residentId 
+        ? { ...resident, status: newStatus } 
+        : resident
+    ));
+    
+    toast({
+      title: "Success",
+      description: `Resident status has been updated to ${newStatus}.`
     });
   };
 
