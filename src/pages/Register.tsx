@@ -6,7 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
+import { User, Building } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -16,12 +23,18 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    communityId: '',
+    userRole: 'resident',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleRoleChange = (value: string) => {
+    setFormData(prev => ({ ...prev, userRole: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +46,16 @@ const Register = () => {
       toast({
         title: "Registration Failed",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formData.userRole !== 'manager' && !formData.communityId) {
+      toast({
+        title: "Registration Failed",
+        description: "Please provide a community ID.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -53,7 +76,7 @@ const Register = () => {
     setTimeout(() => {
       toast({
         title: "Registration Successful",
-        description: "Your account has been created.",
+        description: `Your ${formData.userRole} account has been created.`,
       });
       setIsSubmitting(false);
       navigate("/auth"); // Redirect to login page
@@ -65,18 +88,57 @@ const Register = () => {
       <div className="w-full max-w-md">
         <Card className="border-border shadow-lg">
           <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-2">
-              <div className="rounded-full bg-primary p-2">
-                <User className="h-6 w-6 text-primary-foreground" />
+            {formData.userRole === 'manager' ? (
+              <div className="flex justify-center mb-2">
+                <div className="rounded-full bg-primary p-2">
+                  <Building className="h-6 w-6 text-primary-foreground" />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex justify-center mb-2">
+                <div className="rounded-full bg-primary p-2">
+                  <User className="h-6 w-6 text-primary-foreground" />
+                </div>
+              </div>
+            )}
             <CardTitle className="text-2xl">Create an account</CardTitle>
             <CardDescription>
-              Enter your details below to create a new account
+              Register as a resident or community manager
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="userRole">Register as</Label>
+                <Select 
+                  value={formData.userRole} 
+                  onValueChange={handleRoleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="resident">Resident</SelectItem>
+                    <SelectItem value="manager">Community Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.userRole !== 'manager' && (
+                <div className="space-y-2">
+                  <Label htmlFor="communityId">Community ID</Label>
+                  <Input 
+                    id="communityId" 
+                    name="communityId" 
+                    type="text" 
+                    placeholder="Enter your community ID" 
+                    required={formData.userRole !== 'manager'}
+                    value={formData.communityId} 
+                    onChange={handleChange}
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input 
@@ -128,7 +190,7 @@ const Register = () => {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Creating account..." : "Create account"}
+                {isSubmitting ? "Creating account..." : `Register as ${formData.userRole === 'manager' ? 'Community Manager' : 'Resident'}`}
               </Button>
             </form>
           </CardContent>

@@ -6,13 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
+import { User, Building } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [communityId, setCommunityId] = useState('');
+  const [userRole, setUserRole] = useState('resident');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,19 +39,35 @@ const Auth = () => {
       return;
     }
 
+    if (userRole !== 'admin' && !communityId) {
+      toast({
+        title: "Login Failed",
+        description: "Please provide a community ID.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     // Simulate API call
     setTimeout(() => {
-      // Demo login for community manager
+      // Demo login for different user roles
       if (email === "manager@example.com" && password === "password") {
         toast({
           title: "Login Successful",
           description: "Welcome back to the Community Manager dashboard.",
         });
         navigate("/community-manager");
+      } else if (email === "admin@example.com" && password === "password") {
+        toast({
+          title: "Login Successful",
+          description: "Welcome back to the Admin dashboard.",
+        });
+        navigate("/admin");
       } else {
         toast({
           title: "Login Successful",
-          description: "Welcome back to your dashboard.",
+          description: `Welcome back to your ${userRole} dashboard.`,
         });
         navigate("/dashboard");
       }
@@ -62,11 +87,43 @@ const Auth = () => {
             </div>
             <CardTitle className="text-2xl">Login to your account</CardTitle>
             <CardDescription>
-              Enter your email and password to login to your account
+              Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="userRole">User Type</Label>
+                <Select 
+                  value={userRole} 
+                  onValueChange={setUserRole}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="resident">Resident</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="manager">Community Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {userRole !== 'admin' && (
+                <div className="space-y-2">
+                  <Label htmlFor="communityId">Community ID</Label>
+                  <Input 
+                    id="communityId" 
+                    type="text" 
+                    placeholder="Enter your community ID" 
+                    value={communityId}
+                    onChange={(e) => setCommunityId(e.target.value)}
+                    required={userRole !== 'admin'}
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
