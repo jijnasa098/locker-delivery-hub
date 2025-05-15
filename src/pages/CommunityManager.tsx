@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Building, Package, Users, User, History, FileText } from 'lucide-react';
+import { Plus, Building, Package, Users, User, History, FileText, Lock, Key } from 'lucide-react';
 import LockerGrid from '@/components/LockerGrid';
 
 // Type definitions
@@ -16,6 +15,7 @@ interface LockerSystem {
   id: number;
   name: string;
   location: string;
+  communityId: string;
   description?: string;
 }
 
@@ -40,44 +40,13 @@ interface Locker {
   column?: number;
 }
 
-interface Staff {
-  id: number;
-  name: string;
-  role: 'manager' | 'staff';
-  email: string;
-  phone?: string;
-  joinDate: Date;
-}
-
-interface Resident {
-  id: number;
-  name: string;
-  email: string;
-  unit: string;
-  phone?: string;
-  status: 'active' | 'pending' | 'inactive';
-  joinDate: Date;
-}
-
-interface ParcelHistoryItem {
-  id: string;
-  trackingNumber: string;
-  recipientName: string;
-  lockerNumber: string;
-  placedBy: string;
-  placedAt: Date;
-  retrievedBy?: string;
-  retrievedAt?: Date;
-  status: 'delivered' | 'collected';
-}
-
 const CommunityManager: React.FC = () => {
   // State management
   const { toast } = useToast();
   const [lockerSystems, setLockerSystems] = useState<LockerSystem[]>([
-    { id: 1, name: 'Main Building', location: 'Lobby', description: 'Main building lobby lockers' },
-    { id: 2, name: 'Residence Hall', location: 'First Floor', description: 'Residence hall lockers' },
-    { id: 3, name: 'Gym', location: 'Entrance', description: 'Gym entrance lockers' }
+    { id: 1, name: 'Main Building', location: 'Lobby', communityId: 'COM001', description: 'Main building lobby lockers' },
+    { id: 2, name: 'Residence Hall', location: 'First Floor', communityId: 'COM001', description: 'Residence hall lockers' },
+    { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM002', description: 'Gym entrance lockers' }
   ]);
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [selectedSystemId, setSelectedSystemId] = useState<number>(1);
@@ -86,26 +55,14 @@ const CommunityManager: React.FC = () => {
   const [showAddLockerDialog, setShowAddLockerDialog] = useState<boolean>(false);
   const [newLockerSystemName, setNewLockerSystemName] = useState<string>('');
   const [newLockerSystemLocation, setNewLockerSystemLocation] = useState<string>('');
+  const [newLockerSystemCommunityId, setNewLockerSystemCommunityId] = useState<string>('');
   const [newLockerSystemDescription, setNewLockerSystemDescription] = useState<string>('');
-  const [lockerFormData, setLockerFormData] = useState<{
-    rows: number;
-    columns: number;
-    size: 'small' | 'medium' | 'large';
-    systemId: number;
-  }>({
-    rows: 3,
-    columns: 4,
-    size: 'small',
-    systemId: selectedSystemId
-  });
+  const [communityId, setCommunityId] = useState<string>('COM001');
   
   // Staff management state
-  const [staffMembers, setStaffMembers] = useState<Staff[]>([
-    { id: 1, name: 'John Smith', role: 'manager', email: 'john@example.com', phone: '555-1234', joinDate: new Date('2024-01-15') },
-    { id: 2, name: 'Sarah Johnson', role: 'staff', email: 'sarah@example.com', phone: '555-5678', joinDate: new Date('2024-02-20') }
-  ]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState<boolean>(false);
-  const [newStaffData, setNewStaffData] = useState<Omit<Staff, 'id' | 'joinDate'>>({
+  const [newStaffData, setNewStaffData] = useState<any>({
     name: '',
     role: 'staff',
     email: '',
@@ -113,13 +70,9 @@ const CommunityManager: React.FC = () => {
   });
   
   // Residents management state
-  const [residents, setResidents] = useState<Resident[]>([
-    { id: 1, name: 'Alice Brown', email: 'alice@example.com', unit: 'A101', phone: '555-9012', status: 'active', joinDate: new Date('2024-01-10') },
-    { id: 2, name: 'Bob Green', email: 'bob@example.com', unit: 'B202', phone: '555-3456', status: 'active', joinDate: new Date('2024-02-15') },
-    { id: 3, name: 'Charlie Black', email: 'charlie@example.com', unit: 'C303', status: 'pending', joinDate: new Date('2024-05-01') }
-  ]);
+  const [residents, setResidents] = useState<any[]>([]);
   const [showAddResidentDialog, setShowAddResidentDialog] = useState<boolean>(false);
-  const [newResidentData, setNewResidentData] = useState<Omit<Resident, 'id' | 'joinDate'>>({
+  const [newResidentData, setNewResidentData] = useState<any>({
     name: '',
     email: '',
     unit: '',
@@ -128,31 +81,19 @@ const CommunityManager: React.FC = () => {
   });
   
   // Parcel history state
-  const [parcelHistory, setParcelHistory] = useState<ParcelHistoryItem[]>([
-    { id: 'p1', trackingNumber: 'TRK123456789', recipientName: 'Alice Brown', lockerNumber: '2-3', placedBy: 'John Smith', placedAt: new Date('2025-05-08T14:30:00'), status: 'delivered' },
-    { id: 'p2', trackingNumber: 'TRK987654321', recipientName: 'Bob Green', lockerNumber: '1-2', placedBy: 'Sarah Johnson', placedAt: new Date('2025-05-07T10:15:00'), retrievedBy: 'Bob Green', retrievedAt: new Date('2025-05-08T16:45:00'), status: 'collected' }
-  ]);
+  const [parcelHistory, setParcelHistory] = useState<any[]>([]);
 
   // Initialize with some demo lockers
   useEffect(() => {
     // Empty dependency array means this effect runs once on mount
   }, []);
 
-  // Handle form changes
-  const handleLockerFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setLockerFormData(prev => ({
-      ...prev,
-      [name]: parseInt(value) || 0
-    }));
-  };
-
   // Add locker system
   const handleAddLockerSystem = () => {
-    if (!newLockerSystemName || !newLockerSystemLocation) {
+    if (!newLockerSystemName || !newLockerSystemLocation || !newLockerSystemCommunityId) {
       toast({
         title: "Missing Information",
-        description: "Please provide both name and location for the locker system.",
+        description: "Please provide name, location, and community ID for the locker system.",
         variant: "destructive"
       });
       return;
@@ -166,6 +107,7 @@ const CommunityManager: React.FC = () => {
       id: newId,
       name: newLockerSystemName,
       location: newLockerSystemLocation,
+      communityId: newLockerSystemCommunityId,
       description: newLockerSystemDescription || undefined
     };
 
@@ -176,6 +118,7 @@ const CommunityManager: React.FC = () => {
     // Reset form
     setNewLockerSystemName('');
     setNewLockerSystemLocation('');
+    setNewLockerSystemCommunityId('');
     setNewLockerSystemDescription('');
 
     toast({
@@ -185,14 +128,11 @@ const CommunityManager: React.FC = () => {
   };
 
   // Add lockers
-  const handleAddLockers = () => {
-    const { rows, columns, size, systemId } = lockerFormData;
-    const totalLockers = rows * columns;
-    
-    if (rows <= 0 || columns <= 0) {
+  const handleAddLockers = (count: number, size: 'small' | 'medium' | 'large', systemId: number) => {
+    if (count <= 0) {
       toast({
         title: "Invalid Configuration",
-        description: "Rows and columns must be greater than zero.",
+        description: "Number of lockers must be greater than zero.",
         variant: "destructive"
       });
       return;
@@ -200,27 +140,24 @@ const CommunityManager: React.FC = () => {
 
     const newLockers: Locker[] = [];
     
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        const newLocker: Locker = {
-          id: nextLockerId + newLockers.length,
-          systemId,
-          size,
-          status: 'available',
-          row: row,
-          column: col
-        };
-        newLockers.push(newLocker);
-      }
+    for (let i = 0; i < count; i++) {
+      const newLocker: Locker = {
+        id: nextLockerId + i,
+        systemId,
+        size,
+        status: 'available',
+        row: Math.floor(i / 4), // Example layout
+        column: i % 4
+      };
+      newLockers.push(newLocker);
     }
 
     setLockers([...lockers, ...newLockers]);
-    setNextLockerId(nextLockerId + newLockers.length);
-    setShowAddLockerDialog(false);
+    setNextLockerId(nextLockerId + count);
     
     toast({
       title: "Success",
-      description: `${totalLockers} ${size} lockers have been added.`
+      description: `${count} ${size} lockers have been added.`
     });
   };
 
@@ -237,30 +174,10 @@ const CommunityManager: React.FC = () => {
       return;
     }
 
-    // Limit count to available lockers
     count = Math.min(count, systemLockers.length);
     
-    // Filter out lockers that are occupied
-    const availableLockers = systemLockers.filter(l => l.status === 'available');
+    const lockerIdsToRemove = systemLockers.slice(0, count).map(l => l.id);
     
-    if (availableLockers.length === 0) {
-      toast({
-        title: "All Lockers Occupied",
-        description: `All ${size} lockers in this system are currently occupied.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Limit count to available lockers
-    count = Math.min(count, availableLockers.length);
-    
-    // Get IDs of lockers to remove
-    const lockerIdsToRemove = availableLockers
-      .slice(0, count)
-      .map(l => l.id);
-    
-    // Remove the lockers
     setLockers(lockers.filter(l => !lockerIdsToRemove.includes(l.id)));
     
     toast({
@@ -271,26 +188,6 @@ const CommunityManager: React.FC = () => {
 
   // Remove a single locker
   const handleRemoveSingleLocker = (lockerId: number) => {
-    const lockerToRemove = lockers.find(l => l.id === lockerId);
-    
-    if (!lockerToRemove) {
-      toast({
-        title: "Error",
-        description: "Locker not found.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (lockerToRemove.status === 'occupied') {
-      toast({
-        title: "Cannot Remove",
-        description: "Cannot remove an occupied locker.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setLockers(lockers.filter(l => l.id !== lockerId));
     
     toast({
@@ -299,181 +196,30 @@ const CommunityManager: React.FC = () => {
     });
   };
 
-  // Package operations
-  const handlePackageStore = (lockerId: number, packageDetails: any) => {
-    setLockers(lockers.map(locker => 
-      locker.id === lockerId 
-        ? { ...locker, status: 'occupied', packageDetails } 
-        : locker
-    ));
-    
-    // Add to parcel history
-    const locker = lockers.find(l => l.id === lockerId);
-    if (locker) {
-      const newParcelHistoryItem: ParcelHistoryItem = {
-        id: `ph-${Date.now()}`,
-        trackingNumber: packageDetails.trackingNumber || 'Unknown',
-        recipientName: packageDetails.recipientName,
-        lockerNumber: `${locker.row}-${locker.column}`,
-        placedBy: packageDetails.placedBy,
-        placedAt: new Date(),
-        status: 'delivered'
-      };
-      setParcelHistory([newParcelHistoryItem, ...parcelHistory]);
-    }
-  };
-
-  const handlePackageRetrieve = (lockerId: number, retrievedBy: string) => {
-    const locker = lockers.find(l => l.id === lockerId);
-    
-    // Update the locker status
-    setLockers(lockers.map(locker => 
-      locker.id === lockerId 
-        ? { 
-            ...locker, 
-            status: 'available', 
-            packageDetails: locker.packageDetails 
-              ? {
-                  ...locker.packageDetails,
-                  retrievedBy,
-                  retrievedAt: new Date()
-                } 
-              : undefined
-          } 
-        : locker
-    ));
-    
-    // Update parcel history if the package exists
-    if (locker && locker.packageDetails) {
-      const trackingNumber = locker.packageDetails.trackingNumber || 'Unknown';
-      setParcelHistory(parcelHistory.map(item => 
-        (item.trackingNumber === trackingNumber && item.status === 'delivered')
-          ? { ...item, status: 'collected', retrievedBy, retrievedAt: new Date() }
-          : item
-      ));
-    }
-  };
-  
-  // Staff management
-  const handleAddStaff = () => {
-    if (!newStaffData.name || !newStaffData.email) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both name and email for the staff member.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const newId = staffMembers.length > 0 
-      ? Math.max(...staffMembers.map(staff => staff.id)) + 1 
-      : 1;
-      
-    const newStaff: Staff = {
-      ...newStaffData,
-      id: newId,
-      joinDate: new Date()
-    };
-    
-    setStaffMembers([...staffMembers, newStaff]);
-    setShowAddStaffDialog(false);
-    
-    // Reset form
-    setNewStaffData({
-      name: '',
-      role: 'staff',
-      email: '',
-      phone: ''
-    });
-    
-    toast({
-      title: "Success",
-      description: `${newStaffData.name} has been added to the staff team.`
-    });
-  };
-  
-  const handleRemoveStaff = (staffId: number) => {
-    setStaffMembers(staffMembers.filter(staff => staff.id !== staffId));
-    
-    toast({
-      title: "Success",
-      description: "Staff member has been removed."
-    });
-  };
-  
-  // Resident management
-  const handleAddResident = () => {
-    if (!newResidentData.name || !newResidentData.email || !newResidentData.unit) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide name, email, and unit for the resident.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const newId = residents.length > 0 
-      ? Math.max(...residents.map(resident => resident.id)) + 1 
-      : 1;
-      
-    const newResident: Resident = {
-      ...newResidentData,
-      id: newId,
-      joinDate: new Date()
-    };
-    
-    setResidents([...residents, newResident]);
-    setShowAddResidentDialog(false);
-    
-    // Reset form
-    setNewResidentData({
-      name: '',
-      email: '',
-      unit: '',
-      phone: '',
-      status: 'pending'
-    });
-    
-    toast({
-      title: "Success",
-      description: `${newResidentData.name} has been added as a resident.`
-    });
-  };
-  
-  const handleUpdateResidentStatus = (residentId: number, status: 'active' | 'pending' | 'inactive') => {
-    setResidents(residents.map(resident => 
-      resident.id === residentId 
-        ? { ...resident, status } 
-        : resident
-    ));
-    
-    const resident = residents.find(r => r.id === residentId);
-    if (resident) {
-      toast({
-        title: "Status Updated",
-        description: `${resident.name}'s status has been updated to ${status}.`
-      });
-    }
-  };
-  
-  const handleRemoveResident = (residentId: number) => {
-    setResidents(residents.filter(resident => resident.id !== residentId));
-    
-    toast({
-      title: "Success",
-      description: "Resident has been removed."
-    });
-  };
-
-  // Helper to get the selected system
-  const getSelectedSystem = () => {
-    return lockerSystems.find(system => system.id === selectedSystemId) || lockerSystems[0];
-  };
-
   // Render
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Community Manager Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Community Manager Dashboard</h1>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-muted-foreground" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Community ID</p>
+              <Select value={communityId} onValueChange={setCommunityId}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Select Community" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="COM001">COM001</SelectItem>
+                  <SelectItem value="COM002">COM002</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <Tabs defaultValue="lockers" className="w-full">
         <TabsList className="mb-6">
@@ -503,7 +249,7 @@ const CommunityManager: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Locker Systems</CardTitle>
-                  <CardDescription>Manage your locker systems</CardDescription>
+                  <CardDescription>Manage your locker systems for community {communityId}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -519,7 +265,7 @@ const CommunityManager: React.FC = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      {lockerSystems.map(system => (
+                      {lockerSystems.filter(system => system.communityId === communityId).map(system => (
                         <div 
                           key={system.id} 
                           className={`
@@ -547,13 +293,9 @@ const CommunityManager: React.FC = () => {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>{getSelectedSystem()?.name || 'Select a Locker System'}</CardTitle>
-                      <CardDescription>{getSelectedSystem()?.location} - {getSelectedSystem()?.description}</CardDescription>
+                      <CardTitle>{lockerSystems.find(system => system.id === selectedSystemId)?.name || 'Select a Locker System'}</CardTitle>
+                      <CardDescription>{lockerSystems.find(system => system.id === selectedSystemId)?.location} - {lockerSystems.find(system => system.id === selectedSystemId)?.description}</CardDescription>
                     </div>
-                    <Button onClick={() => setShowAddLockerDialog(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Lockers
-                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -564,8 +306,6 @@ const CommunityManager: React.FC = () => {
                     onAddLockers={handleAddLockers}
                     onRemoveLockers={handleRemoveLockers}
                     onRemoveSingleLocker={handleRemoveSingleLocker}
-                    onPackageStore={handlePackageStore}
-                    onPackageRetrieve={handlePackageRetrieve}
                     currentUser={{ name: "Community Manager", role: "manager" }}
                   />
                 </CardContent>
@@ -811,6 +551,16 @@ const CommunityManager: React.FC = () => {
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="communityId">Community ID</Label>
+              <Input
+                id="communityId"
+                placeholder="COM001"
+                value={newLockerSystemCommunityId}
+                onChange={(e) => setNewLockerSystemCommunityId(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="description">Description (Optional)</Label>
               <Input
                 id="description"
@@ -844,14 +594,14 @@ const CommunityManager: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="systemId">Locker System</Label>
               <Select 
-                value={lockerFormData.systemId.toString()}
-                onValueChange={(value) => setLockerFormData(prev => ({ ...prev, systemId: parseInt(value) }))}
+                value={selectedSystemId.toString()}
+                onValueChange={(value) => setSelectedSystemId(parseInt(value))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select locker system" />
                 </SelectTrigger>
                 <SelectContent>
-                  {lockerSystems.map(system => (
+                  {lockerSystems.filter(system => system.communityId === communityId).map(system => (
                     <SelectItem key={system.id} value={system.id.toString()}>
                       {system.name} ({system.location})
                     </SelectItem>
@@ -859,36 +609,22 @@ const CommunityManager: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rows">Rows</Label>
-                <Input
-                  id="rows"
-                  name="rows"
-                  type="number"
-                  min="1"
-                  value={lockerFormData.rows}
-                  onChange={handleLockerFormChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="columns">Columns</Label>
-                <Input
-                  id="columns"
-                  name="columns"
-                  type="number"
-                  min="1"
-                  value={lockerFormData.columns}
-                  onChange={handleLockerFormChange}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="count">Number of Lockers</Label>
+              <Input
+                id="count"
+                type="number"
+                min="1"
+                value={1}
+                onChange={(e) => handleAddLockers(parseInt(e.target.value), 'small', selectedSystemId)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="size">Locker Size</Label>
               <Select 
-                value={lockerFormData.size}
+                value={'small'}
                 onValueChange={(value: 'small' | 'medium' | 'large') => 
-                  setLockerFormData(prev => ({ ...prev, size: value }))
+                  handleAddLockers(1, value, selectedSystemId)
                 }
               >
                 <SelectTrigger>
@@ -901,18 +637,13 @@ const CommunityManager: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="bg-muted p-3 rounded-md">
-              <p className="text-sm">
-                This will add {lockerFormData.rows * lockerFormData.columns} {lockerFormData.size} lockers in a {lockerFormData.rows}×{lockerFormData.columns} grid.
-              </p>
-            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddLockerDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddLockers}>
-              Add {lockerFormData.rows * lockerFormData.columns} Lockers
+            <Button onClick={() => handleAddLockers(1, 'small', selectedSystemId)}>
+              Add Locker
             </Button>
           </div>
         </DialogContent>

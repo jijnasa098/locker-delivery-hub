@@ -4,8 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, Package } from 'lucide-react';
+import { Plus, Minus, Package, Trash2 } from 'lucide-react';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Updated Locker interface to include packageDetails and systemId
 interface Locker {
@@ -22,7 +24,7 @@ interface LockerGridProps {
   lockers: Locker[];
   lockerSystems: { id: number; name: string; location: string }[];
   selectedSystemId: number;
-  onAddLockers: (rows: number, columns: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
+  onAddLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
   onRemoveLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
   onRemoveSingleLocker: (lockerId: number) => void;
   onPackageStore?: (lockerId: number, packageDetails: PackageDetails) => void;
@@ -47,11 +49,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
   const filteredLockers = lockers.filter(locker => locker.systemId === selectedSystemId);
 
   const handleAddLockers = () => {
-    // Calculate rows and columns to create a balanced grid
-    const sqrt = Math.sqrt(lockerCount);
-    const columns = Math.ceil(sqrt);
-    const rows = Math.ceil(lockerCount / columns);
-    onAddLockers(rows, columns, lockerSize, selectedSystemId);
+    onAddLockers(lockerCount, lockerSize, selectedSystemId);
   };
 
   const handleRemoveLockers = () => {
@@ -74,37 +72,47 @@ const LockerGrid: React.FC<LockerGridProps> = ({
       <div className="space-y-6">
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-4 justify-between items-end">
-              <div className="flex items-end gap-4">
-                <div className="space-y-2">
-                  <Select 
-                    value={lockerSize} 
-                    onValueChange={(value) => setLockerSize(value as 'small' | 'medium' | 'large')}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="small">Small</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="large">Large</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="flex flex-col space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="lockerSize">Locker Size</Label>
+                <Select 
+                  value={lockerSize} 
+                  onValueChange={(value) => setLockerSize(value as 'small' | 'medium' | 'large')}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={handleAddLockers}>
+              
+              <div className="space-y-2">
+                <Label htmlFor="lockerCount">Number of Lockers</Label>
+                <Input
+                  id="lockerCount"
+                  type="number"
+                  min="1"
+                  value={lockerCount}
+                  onChange={(e) => setLockerCount(parseInt(e.target.value) || 1)}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button onClick={handleAddLockers} className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Lockers
                 </Button>
                 
                 <Button 
                   variant="outline" 
-                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  className="border-red-200 text-red-600 hover:bg-red-50 w-full"
                   onClick={handleRemoveLockers}
                 >
-                  <Minus className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Remove Lockers
                 </Button>
               </div>
