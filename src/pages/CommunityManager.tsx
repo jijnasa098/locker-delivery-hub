@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Building, Package, Users, User, History, FileText, Lock, Key } from 'lucide-react';
+import { Plus, Building, Package, Users, User, History, FileText } from 'lucide-react';
 import LockerGrid from '@/components/LockerGrid';
 
 // Type definitions
@@ -46,7 +46,7 @@ const CommunityManager: React.FC = () => {
   const [lockerSystems, setLockerSystems] = useState<LockerSystem[]>([
     { id: 1, name: 'Main Building', location: 'Lobby', communityId: 'COM001', description: 'Main building lobby lockers' },
     { id: 2, name: 'Residence Hall', location: 'First Floor', communityId: 'COM001', description: 'Residence hall lockers' },
-    { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM002', description: 'Gym entrance lockers' }
+    { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM001', description: 'Gym entrance lockers' }
   ]);
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [selectedSystemId, setSelectedSystemId] = useState<number>(1);
@@ -55,9 +55,8 @@ const CommunityManager: React.FC = () => {
   const [showAddLockerDialog, setShowAddLockerDialog] = useState<boolean>(false);
   const [newLockerSystemName, setNewLockerSystemName] = useState<string>('');
   const [newLockerSystemLocation, setNewLockerSystemLocation] = useState<string>('');
-  const [newLockerSystemCommunityId, setNewLockerSystemCommunityId] = useState<string>('');
   const [newLockerSystemDescription, setNewLockerSystemDescription] = useState<string>('');
-  const [communityId, setCommunityId] = useState<string>('COM001');
+  const communityId = 'COM001'; // Fixed community ID
   
   // Staff management state
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
@@ -90,10 +89,10 @@ const CommunityManager: React.FC = () => {
 
   // Add locker system
   const handleAddLockerSystem = () => {
-    if (!newLockerSystemName || !newLockerSystemLocation || !newLockerSystemCommunityId) {
+    if (!newLockerSystemName || !newLockerSystemLocation) {
       toast({
         title: "Missing Information",
-        description: "Please provide name, location, and community ID for the locker system.",
+        description: "Please provide name and location for the locker system.",
         variant: "destructive"
       });
       return;
@@ -107,7 +106,7 @@ const CommunityManager: React.FC = () => {
       id: newId,
       name: newLockerSystemName,
       location: newLockerSystemLocation,
-      communityId: newLockerSystemCommunityId,
+      communityId: communityId,
       description: newLockerSystemDescription || undefined
     };
 
@@ -118,7 +117,6 @@ const CommunityManager: React.FC = () => {
     // Reset form
     setNewLockerSystemName('');
     setNewLockerSystemLocation('');
-    setNewLockerSystemCommunityId('');
     setNewLockerSystemDescription('');
 
     toast({
@@ -128,7 +126,7 @@ const CommunityManager: React.FC = () => {
   };
 
   // Add lockers
-  const handleAddLockers = (count: number, size: 'small' | 'medium' | 'large', systemId: number) => {
+  const handleAddLockers = (count: number, size: 'small' | 'medium' | 'large', systemId: number, rows: number, columns: number) => {
     if (count <= 0) {
       toast({
         title: "Invalid Configuration",
@@ -141,13 +139,16 @@ const CommunityManager: React.FC = () => {
     const newLockers: Locker[] = [];
     
     for (let i = 0; i < count; i++) {
+      const rowIndex = Math.floor(i / columns);
+      const colIndex = i % columns;
+      
       const newLocker: Locker = {
         id: nextLockerId + i,
         systemId,
         size,
         status: 'available',
-        row: Math.floor(i / 4), // Example layout
-        column: i % 4
+        row: rowIndex,
+        column: colIndex
       };
       newLockers.push(newLocker);
     }
@@ -324,19 +325,7 @@ const CommunityManager: React.FC = () => {
         
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-muted-foreground" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Community ID</p>
-              <Select value={communityId} onValueChange={setCommunityId}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Select Community" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="COM001">COM001</SelectItem>
-                  <SelectItem value="COM002">COM002</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-sm font-medium">Community ID: <span className="font-bold">{communityId}</span></p>
           </div>
         </div>
       </div>
@@ -385,7 +374,7 @@ const CommunityManager: React.FC = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      {lockerSystems.filter(system => system.communityId === communityId).map(system => (
+                      {lockerSystems.map(system => (
                         <div 
                           key={system.id} 
                           className={`
@@ -671,16 +660,6 @@ const CommunityManager: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="communityId">Community ID</Label>
-              <Input
-                id="communityId"
-                placeholder="COM001"
-                value={newLockerSystemCommunityId}
-                onChange={(e) => setNewLockerSystemCommunityId(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
               <Label htmlFor="description">Description (Optional)</Label>
               <Input
                 id="description"
@@ -696,74 +675,6 @@ const CommunityManager: React.FC = () => {
             </Button>
             <Button onClick={handleAddLockerSystem}>
               Add System
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Add Lockers Dialog */}
-      <Dialog open={showAddLockerDialog} onOpenChange={setShowAddLockerDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Lockers</DialogTitle>
-            <DialogDescription>
-              Add new lockers to your community.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="systemId">Locker System</Label>
-              <Select 
-                value={selectedSystemId.toString()}
-                onValueChange={(value) => setSelectedSystemId(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select locker system" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lockerSystems.filter(system => system.communityId === communityId).map(system => (
-                    <SelectItem key={system.id} value={system.id.toString()}>
-                      {system.name} ({system.location})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="count">Number of Lockers</Label>
-              <Input
-                id="count"
-                type="number"
-                min="1"
-                value={1}
-                onChange={(e) => handleAddLockers(parseInt(e.target.value), 'small', selectedSystemId)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="size">Locker Size</Label>
-              <Select 
-                value={'small'}
-                onValueChange={(value: 'small' | 'medium' | 'large') => 
-                  handleAddLockers(1, value, selectedSystemId)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="small">Small</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="large">Large</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddLockerDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => handleAddLockers(1, 'small', selectedSystemId)}>
-              Add Locker
             </Button>
           </div>
         </DialogContent>

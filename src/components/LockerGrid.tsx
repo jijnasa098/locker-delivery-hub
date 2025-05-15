@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Plus, Minus, Package, Trash2 } from 'lucide-react';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ interface LockerGridProps {
   lockers: Locker[];
   lockerSystems: { id: number; name: string; location: string }[];
   selectedSystemId: number;
-  onAddLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
+  onAddLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number, rows: number, columns: number) => void;
   onRemoveLockers: (count: number, size: 'small' | 'medium' | 'large', systemId: number) => void;
   onRemoveSingleLocker: (lockerId: number) => void;
   onPackageStore?: (lockerId: number, packageDetails: PackageDetails) => void;
@@ -65,7 +65,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
       return;
     }
     
-    onAddLockers(totalLockers, lockerSize, selectedSystemId);
+    onAddLockers(totalLockers, lockerSize, selectedSystemId, rows, columns);
     setShowAddLockerDialog(false);
     
     toast({
@@ -193,6 +193,9 @@ const LockerGrid: React.FC<LockerGridProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Lockers</DialogTitle>
+            <DialogDescription>
+              Specify the number of rows and columns for the locker grid.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -256,6 +259,9 @@ const LockerGrid: React.FC<LockerGridProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Remove Lockers</DialogTitle>
+            <DialogDescription>
+              Select how many lockers you want to remove.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
