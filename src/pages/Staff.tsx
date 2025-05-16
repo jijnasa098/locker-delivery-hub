@@ -26,11 +26,13 @@ import {
 import { Package, Box, LogOut, User, Building, Check, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
-// Mock data - in a real app this would come from API/database
+// Mock data - in a real app this would come from API/database shared with the community manager
 const mockLockerSystems = [
   { id: 1, name: 'Main Building', location: 'Lobby', communityId: 'COM001', description: 'Main building lobby lockers' },
   { id: 2, name: 'Residence Hall', location: 'First Floor', communityId: 'COM001', description: 'Residence hall lockers' },
-  { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM001', description: 'Gym entrance lockers' }
+  { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM001', description: 'Gym entrance lockers' },
+  { id: 4, name: 'Library', location: 'Main Entrance', communityId: 'COM001', description: 'Library entrance lockers' },
+  { id: 5, name: 'Student Center', location: 'South Wing', communityId: 'COM001', description: 'Student center lockers' }
 ];
 
 const mockLockers = [
@@ -45,7 +47,12 @@ const mockLockers = [
   { id: 9, systemId: 2, size: 'large', status: 'available', row: 0, column: 2 },
   { id: 10, systemId: 3, size: 'small', status: 'available', row: 0, column: 0 },
   { id: 11, systemId: 3, size: 'medium', status: 'available', row: 0, column: 1 },
-  { id: 12, systemId: 3, size: 'large', status: 'available', row: 0, column: 2 }
+  { id: 12, systemId: 3, size: 'large', status: 'available', row: 0, column: 2 },
+  { id: 13, systemId: 4, size: 'small', status: 'available', row: 0, column: 0 },
+  { id: 14, systemId: 4, size: 'medium', status: 'available', row: 0, column: 1 },
+  { id: 15, systemId: 5, size: 'small', status: 'available', row: 0, column: 0 },
+  { id: 16, systemId: 5, size: 'medium', status: 'available', row: 0, column: 1 },
+  { id: 17, systemId: 5, size: 'large', status: 'available', row: 0, column: 2 }
 ];
 
 // Generate a random 6-digit OTP
@@ -53,12 +60,50 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Mock package history to display
+const mockPackageHistory = [
+  { 
+    id: 1, 
+    recipientName: 'John Doe', 
+    recipientPhone: '1234567890', 
+    trackingNumber: 'TRK12345', 
+    status: 'delivered', 
+    lockerId: 3, 
+    systemId: 1,
+    dateStored: new Date(2023, 4, 15).toISOString(),
+    dateCollected: new Date(2023, 4, 16).toISOString()
+  },
+  { 
+    id: 2, 
+    recipientName: 'Jane Smith', 
+    recipientPhone: '0987654321', 
+    trackingNumber: 'TRK67890', 
+    status: 'stored', 
+    lockerId: 7, 
+    systemId: 2,
+    dateStored: new Date(2023, 4, 17).toISOString(),
+    dateCollected: null
+  },
+  { 
+    id: 3, 
+    recipientName: 'Mike Johnson', 
+    recipientPhone: '5556667777', 
+    trackingNumber: 'TRK54321', 
+    status: 'delivered', 
+    lockerId: 11, 
+    systemId: 3,
+    dateStored: new Date(2023, 4, 10).toISOString(),
+    dateCollected: new Date(2023, 4, 12).toISOString()
+  }
+];
+
 const Staff = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedSystemId, setSelectedSystemId] = useState<number | null>(null);
   const [availableLockers, setAvailableLockers] = useState<any[]>([]);
   const [showStorePackageDialog, setShowStorePackageDialog] = useState(false);
+  const [packageHistory, setPackageHistory] = useState(mockPackageHistory);
   
   // Package details state
   const [packageDetails, setPackageDetails] = useState({
@@ -124,6 +169,21 @@ const Staff = () => {
     
     // In a real app, we would update the locker status in the database
     // and send an SMS notification with the OTP to the recipient
+    
+    // Update the package history
+    const newPackage = {
+      id: packageHistory.length + 1,
+      recipientName: packageDetails.recipientName,
+      recipientPhone: packageDetails.recipientPhone,
+      trackingNumber: packageDetails.trackingNumber || `TRK${Math.floor(10000 + Math.random() * 90000)}`,
+      status: 'stored',
+      lockerId: selectedLockerId,
+      systemId: selectedSystemId as number,
+      dateStored: new Date().toISOString(),
+      dateCollected: null
+    };
+    
+    setPackageHistory([...packageHistory, newPackage]);
   };
 
   const handleCloseOTPDialog = () => {
@@ -159,6 +219,11 @@ const Staff = () => {
             <TabsTrigger value="packages" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               <span>Package Management</span>
+            </TabsTrigger>
+            
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              <span>Package History</span>
             </TabsTrigger>
           </TabsList>
           
@@ -258,6 +323,75 @@ const Staff = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+          
+          {/* Package History Tab */}
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Package History</CardTitle>
+                <CardDescription>
+                  View all packages that have been stored and collected
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {packageHistory.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                    <p>No package history available</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4">ID</th>
+                          <th className="text-left py-3 px-4">Recipient</th>
+                          <th className="text-left py-3 px-4">Tracking #</th>
+                          <th className="text-left py-3 px-4">Locker</th>
+                          <th className="text-left py-3 px-4">Date Stored</th>
+                          <th className="text-left py-3 px-4">Date Collected</th>
+                          <th className="text-left py-3 px-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packageHistory.map(pkg => {
+                          const system = mockLockerSystems.find(s => s.id === pkg.systemId);
+                          return (
+                            <tr key={pkg.id} className="border-b hover:bg-muted/50">
+                              <td className="py-3 px-4">{pkg.id}</td>
+                              <td className="py-3 px-4">
+                                <div>{pkg.recipientName}</div>
+                                <div className="text-xs text-muted-foreground">{pkg.recipientPhone}</div>
+                              </td>
+                              <td className="py-3 px-4">{pkg.trackingNumber}</td>
+                              <td className="py-3 px-4">
+                                <div>#{pkg.lockerId}</div>
+                                <div className="text-xs text-muted-foreground">{system?.name}</div>
+                              </td>
+                              <td className="py-3 px-4">
+                                {new Date(pkg.dateStored).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 px-4">
+                                {pkg.dateCollected 
+                                  ? new Date(pkg.dateCollected).toLocaleDateString()
+                                  : '-'
+                                }
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge className={pkg.status === 'delivered' ? 'bg-green-500' : 'bg-blue-500'}>
+                                  {pkg.status === 'delivered' ? 'Collected' : 'Stored'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

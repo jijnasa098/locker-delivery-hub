@@ -21,7 +21,7 @@ const Auth = () => {
   const { toast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [communityId, setCommunityId] = useState('');
+  const [communityId, setCommunityId] = useState('COM001');
   const [userRole, setUserRole] = useState('resident');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
@@ -71,7 +71,7 @@ const Auth = () => {
           title: "Login Successful",
           description: `Welcome back to your Resident dashboard.`,
         });
-        navigate("/resident"); // Updated to point to new resident dashboard
+        navigate("/resident");
       } else {
         toast({
           title: "Login Failed",
@@ -190,9 +190,13 @@ const Auth = () => {
           <CardFooter className="justify-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
+              {/* Only allow residents and community managers to register */}
               <Button variant="link" className="p-0 h-auto font-medium" onClick={() => navigate("/register")}>
                 Sign up
               </Button>
+            </p>
+            <p className="text-sm text-muted-foreground ml-2">
+              (Staff accounts are created by community managers)
             </p>
           </CardFooter>
         </Card>

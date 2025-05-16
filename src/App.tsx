@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard"; // Will keep for backward compatibility
 import ResidentDashboard from "./pages/ResidentDashboard"; // New resident dashboard
-import Staff from "./pages/Admin"; // Renamed but still using the same file
+import Staff from "./pages/Staff"; // Changed from Admin to Staff to be consistent
 import CommunityManager from "./pages/CommunityManager";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";

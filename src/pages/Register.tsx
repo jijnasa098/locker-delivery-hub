@@ -85,11 +85,6 @@ const Register = () => {
           title: "Registration Successful",
           description: "Your community manager account has been created.",
         });
-      } else {
-        toast({
-          title: "Registration Successful",
-          description: "Your staff account has been created.",
-        });
       }
       
       navigate("/auth");
@@ -125,7 +120,7 @@ const Register = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="resident">Resident</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
+                    {/* Staff registration removed as it should be managed by Community Manager */}
                     <SelectItem value="manager">Community Manager</SelectItem>
                   </SelectContent>
                 </Select>
