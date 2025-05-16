@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, Package, Trash2 } from 'lucide-react';
 import LockerMap, { PackageDetails } from '@/components/LockerMap';
 import { Input } from '@/components/ui/input';
@@ -70,7 +70,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
     
     toast({
       title: "Success",
-      description: `${totalLockers} ${lockerSize} lockers have been added.`,
+      description: `${rows}x${columns} grid of ${lockerSize} lockers have been added.`,
     });
   };
 
@@ -104,89 +104,109 @@ const LockerGrid: React.FC<LockerGridProps> = ({
     };
   };
 
+  // Calculate grid container width based on columns
+  const getGridStyle = () => {
+    // This will create a responsive grid that adjusts based on column count
+    // For larger grids (>10 columns), we'll use smaller locker sizes
+    const lockerWidth = columns > 15 ? 40 : columns > 10 ? 50 : 60;
+    return {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, ${lockerWidth}px)`,
+      gap: '4px',
+      maxWidth: '100%',
+      overflowX: 'auto',
+    };
+  };
+
   return (
-    <div>
-      <div className="space-y-6">
-        {filteredLockers.length > 0 ? (
-          <>
-            <div className="flex gap-4 mb-6">
-              <Button onClick={() => setShowAddLockerDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Lockers
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="border-red-200 text-red-600 hover:bg-red-50"
-                onClick={() => setShowRemoveLockerDialog(true)}
-              >
-                <Minus className="mr-2 h-4 w-4" />
-                Remove Lockers
-              </Button>
-            </div>
-            
-            <LockerMap 
-              lockers={filteredLockers} 
-              onLockerSelect={(id) => {
-                const locker = lockers.find(l => l.id === id);
-                if (locker && locker.status === 'available') {
-                  if (confirm(`Are you sure you want to remove locker #${id}?`)) {
-                    onRemoveSingleLocker(id);
-                  }
-                } else if (locker && locker.status === 'occupied') {
-                  toast({
-                    title: "Cannot Remove",
-                    description: "You cannot remove an occupied locker.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              onPackageStore={onPackageStore}
-              onPackageRetrieve={onPackageRetrieve}
-              currentUser={currentUser}
-              hideEmptySlots={true}
-            />
-            
-            <div className="bg-muted p-4 rounded-md mt-4">
-              <h3 className="font-medium mb-2">Locker Distribution:</h3>
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between">
-                  <span>Small Lockers:</span>
-                  <span>{getLockerCounts().small}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Medium Lockers:</span>
-                  <span>{getLockerCounts().medium}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Large Lockers:</span>
-                  <span>{getLockerCounts().large}</span>
-                </div>
-                <div className="flex justify-between font-medium pt-2 border-t">
-                  <span>Available:</span>
-                  <span>{getLockerCounts().available}</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span>Occupied:</span>
-                  <span>{getLockerCounts().occupied}</span>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-8">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-medium mb-2">No Lockers</h3>
-            <p className="text-muted-foreground mb-6">
-              This locker system doesn't have any lockers yet.
-            </p>
+    <div className="space-y-6">
+      {filteredLockers.length > 0 ? (
+        <>
+          <div className="flex gap-4 mb-6 flex-wrap">
             <Button onClick={() => setShowAddLockerDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Lockers
             </Button>
+            
+            <Button 
+              variant="outline" 
+              className="border-red-200 text-red-600 hover:bg-red-50"
+              onClick={() => setShowRemoveLockerDialog(true)}
+            >
+              <Minus className="mr-2 h-4 w-4" />
+              Remove Lockers
+            </Button>
           </div>
-        )}
-      </div>
+          
+          <div className="overflow-auto max-w-full border rounded-md p-4 bg-gray-50">
+            <div style={getGridStyle()}>
+              <LockerMap 
+                lockers={filteredLockers} 
+                onLockerSelect={(id) => {
+                  const locker = lockers.find(l => l.id === id);
+                  if (locker && locker.status === 'available') {
+                    if (confirm(`Are you sure you want to remove locker #${id}?`)) {
+                      onRemoveSingleLocker(id);
+                    }
+                  } else if (locker && locker.status === 'occupied') {
+                    toast({
+                      title: "Cannot Remove",
+                      description: "You cannot remove an occupied locker.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                onPackageStore={onPackageStore}
+                onPackageRetrieve={onPackageRetrieve}
+                currentUser={currentUser}
+                hideEmptySlots={false}
+              />
+            </div>
+          </div>
+          
+          <div className="bg-muted p-4 rounded-md mt-4">
+            <h3 className="font-medium mb-2">Locker Distribution:</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span>Grid Size:</span>
+                <span>{Math.ceil(filteredLockers.length / columns)} rows × {columns} columns</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Small Lockers:</span>
+                <span>{getLockerCounts().small}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Medium Lockers:</span>
+                <span>{getLockerCounts().medium}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Large Lockers:</span>
+                <span>{getLockerCounts().large}</span>
+              </div>
+              <div className="flex justify-between font-medium pt-2 border-t">
+                <span>Available:</span>
+                <span>{getLockerCounts().available}</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span>Occupied:</span>
+                <span>{getLockerCounts().occupied}</span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-8">
+          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-medium mb-2">No Lockers</h3>
+          <p className="text-muted-foreground mb-6">
+            This locker system doesn't have any lockers yet.
+          </p>
+          <Button onClick={() => setShowAddLockerDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Lockers
+          </Button>
+        </div>
+      )}
       
       {/* Add Lockers Dialog */}
       <Dialog open={showAddLockerDialog} onOpenChange={setShowAddLockerDialog}>
@@ -205,6 +225,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
                   id="rows"
                   type="number"
                   min="1"
+                  max="100"
                   value={rows}
                   onChange={(e) => setRows(parseInt(e.target.value) || 1)}
                 />
@@ -216,6 +237,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
                   id="columns"
                   type="number"
                   min="1"
+                  max="100"
                   value={columns}
                   onChange={(e) => setColumns(parseInt(e.target.value) || 1)}
                 />

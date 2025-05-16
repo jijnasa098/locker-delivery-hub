@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { User, Building } from "lucide-react";
+import { User, Building, Phone, Home, UserPlus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,10 +20,12 @@ const Register = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
+    username: '',
     password: '',
     confirmPassword: '',
     communityId: '',
+    phoneNumber: '',
+    blockNumber: '',
     userRole: 'resident',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +44,7 @@ const Register = () => {
     setIsSubmitting(true);
 
     // Basic validation
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.name || !formData.username || !formData.password) {
       toast({
         title: "Registration Failed",
         description: "Please fill in all required fields.",
@@ -52,10 +54,20 @@ const Register = () => {
       return;
     }
 
-    if (formData.userRole !== 'manager' && !formData.communityId) {
+    if (!formData.communityId) {
       toast({
         title: "Registration Failed",
         description: "Please provide a community ID.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formData.userRole === 'resident' && (!formData.phoneNumber || !formData.blockNumber)) {
+      toast({
+        title: "Registration Failed",
+        description: "Residents must provide block number and phone number.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -75,8 +87,10 @@ const Register = () => {
     // Simulate API call
     setTimeout(() => {
       toast({
-        title: "Registration Successful",
-        description: `Your ${formData.userRole} account has been created.`,
+        title: "Registration Pending",
+        description: formData.userRole === 'resident' 
+          ? "Your account request has been submitted and is pending approval from the community manager." 
+          : `Your ${formData.userRole} account has been created.`,
       });
       setIsSubmitting(false);
       navigate("/auth"); // Redirect to login page
@@ -97,7 +111,7 @@ const Register = () => {
             ) : (
               <div className="flex justify-center mb-2">
                 <div className="rounded-full bg-primary p-2">
-                  <User className="h-6 w-6 text-primary-foreground" />
+                  <UserPlus className="h-6 w-6 text-primary-foreground" />
                 </div>
               </div>
             )}
@@ -124,20 +138,18 @@ const Register = () => {
                 </Select>
               </div>
 
-              {formData.userRole !== 'manager' && (
-                <div className="space-y-2">
-                  <Label htmlFor="communityId">Community ID</Label>
-                  <Input 
-                    id="communityId" 
-                    name="communityId" 
-                    type="text" 
-                    placeholder="Enter your community ID" 
-                    required={formData.userRole !== 'manager'}
-                    value={formData.communityId} 
-                    onChange={handleChange}
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="communityId">Community ID</Label>
+                <Input 
+                  id="communityId" 
+                  name="communityId" 
+                  type="text" 
+                  placeholder="Enter your community ID" 
+                  required
+                  value={formData.communityId} 
+                  onChange={handleChange}
+                />
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -152,19 +164,52 @@ const Register = () => {
                   autoComplete="name"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  placeholder="john.doe@example.com" 
+                  id="username" 
+                  name="username" 
+                  type="text" 
+                  placeholder="johndoe" 
                   required 
-                  value={formData.email} 
+                  value={formData.username} 
                   onChange={handleChange} 
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
+
+              {formData.userRole === 'resident' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="blockNumber">Block Number</Label>
+                    <Input 
+                      id="blockNumber" 
+                      name="blockNumber" 
+                      type="text" 
+                      placeholder="A-101" 
+                      required 
+                      value={formData.blockNumber} 
+                      onChange={handleChange}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Input 
+                      id="phoneNumber" 
+                      name="phoneNumber" 
+                      type="tel" 
+                      placeholder="+91 9876543210" 
+                      required 
+                      value={formData.phoneNumber} 
+                      onChange={handleChange}
+                      autoComplete="tel"
+                    />
+                  </div>
+                </>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input 
@@ -177,6 +222,7 @@ const Register = () => {
                   autoComplete="new-password"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input 
@@ -189,6 +235,7 @@ const Register = () => {
                   autoComplete="new-password"
                 />
               </div>
+
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : `Register as ${formData.userRole === 'manager' ? 'Community Manager' : 'Resident'}`}
               </Button>

@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import Admin from "./pages/Admin";
+import Staff from "./pages/Admin"; // Renamed but still using the same file
 import CommunityManager from "./pages/CommunityManager";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";
@@ -23,7 +23,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/staff" element={<Staff />} /> 
+          <Route path="/admin" element={<Navigate to="/staff" replace />} /> {/* Redirect for backward compatibility */}
           <Route path="/community-manager" element={<CommunityManager />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/register" element={<Register />} />

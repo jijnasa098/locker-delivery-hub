@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Package, User, Bell } from 'lucide-react';
+import { Package, User, Bell, Phone } from 'lucide-react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import Navbar from '@/components/Navbar';
 import PackageCard from '@/components/PackageCard';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
@@ -20,16 +21,20 @@ const Dashboard = () => {
   const [user] = useState({
     id: 'u1',
     name: 'John Doe',
-    email: 'john@example.com',
-    role: 'user',
+    username: 'resident',
+    phone: '9876543210',
+    role: 'resident',
     apartment: 'A201',
+    blockNumber: 'A-101',
   });
   
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showOTPDialog, setShowOTPDialog] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [enteredOTP, setEnteredOTP] = useState("");
   
-  // Get user packages based on user ID
-  const userPackages = getUserPackages(user.id);
+  // Get user packages based on user phone number
+  const userPackages = allPackages.filter(pkg => pkg.recipientPhone === user.phone);
   
   // Filter packages by status
   const pendingPackages = userPackages.filter(pkg => pkg.status === 'pending');
@@ -38,11 +43,25 @@ const Dashboard = () => {
   
   const handleCollectPackage = (packageId: string) => {
     setSelectedPackage(userPackages.find(pkg => pkg.id === packageId));
-    setShowQRCode(true);
+    setShowOTPDialog(true);
+  };
+  
+  const handleVerifyOTP = () => {
+    if (selectedPackage && selectedPackage.otp === enteredOTP) {
+      setShowOTPDialog(false);
+      setShowQRCode(true);
+    } else {
+      toast({
+        title: "Invalid OTP",
+        description: "The OTP you entered is incorrect. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleCollectComplete = () => {
     setShowQRCode(false);
+    setEnteredOTP("");
     toast({
       title: "Package Collected",
       description: "You have successfully collected your package.",
@@ -70,6 +89,12 @@ const Dashboard = () => {
           <p className="text-muted-foreground">
             Manage your deliveries and track your packages
           </p>
+          <div className="flex items-center mt-2 text-sm text-muted-foreground">
+            <Phone className="h-4 w-4 mr-1" /> 
+            <span>{user.phone}</span>
+            <span className="mx-2">•</span>
+            <span>Block: {user.blockNumber}</span>
+          </div>
         </div>
         
         {/* Overview Cards */}
@@ -188,6 +213,33 @@ const Dashboard = () => {
             )}
           </TabsContent>
         </Tabs>
+        
+        {/* OTP Verification Dialog */}
+        <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Enter Collection OTP</DialogTitle>
+              <DialogDescription>
+                Please enter the OTP sent to your phone to collect your package.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center py-4">
+              <InputOTP maxLength={6} value={enteredOTP} onChange={setEnteredOTP}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <Button className="w-full" onClick={handleVerifyOTP}>
+              Verify OTP
+            </Button>
+          </DialogContent>
+        </Dialog>
         
         {/* QR Code Dialog */}
         <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
