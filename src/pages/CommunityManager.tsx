@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Building, Package, Users, User, History, FileText } from 'lucide-react';
 import LockerGrid from '@/components/LockerGrid';
+import { Badge } from '@/components/ui/badge';
+
+// Mock data
+const mockPendingResidents = [
+  { id: 1, username: 'john_doe', blockNumber: 'A-101', phoneNumber: '9876543210', status: 'pending', communityId: 'COM001' },
+  { id: 2, username: 'jane_smith', blockNumber: 'B-205', phoneNumber: '9876543211', status: 'pending', communityId: 'COM001' }
+];
 
 // Type definitions
 interface LockerSystem {
@@ -70,6 +78,7 @@ const CommunityManager: React.FC = () => {
   
   // Residents management state
   const [residents, setResidents] = useState<any[]>([]);
+  const [pendingResidents, setPendingResidents] = useState(mockPendingResidents);
   const [showAddResidentDialog, setShowAddResidentDialog] = useState<boolean>(false);
   const [newResidentData, setNewResidentData] = useState<any>({
     name: '',
@@ -81,11 +90,6 @@ const CommunityManager: React.FC = () => {
   
   // Parcel history state
   const [parcelHistory, setParcelHistory] = useState<any[]>([]);
-
-  // Initialize with some demo lockers
-  useEffect(() => {
-    // Empty dependency array means this effect runs once on mount
-  }, []);
 
   // Add locker system
   const handleAddLockerSystem = () => {
@@ -293,6 +297,38 @@ const CommunityManager: React.FC = () => {
     });
   };
 
+  // Handle resident approval/rejection from the pending requests
+  const handleAcceptResident = (residentId: number) => {
+    // Find the resident in the pending list
+    const resident = pendingResidents.find(r => r.id === residentId);
+    if (resident) {
+      // Add to residents with active status
+      const newResident = {
+        ...resident,
+        status: 'active',
+        joinDate: new Date()
+      };
+      setResidents([...residents, newResident]);
+      
+      // Remove from pending
+      setPendingResidents(pendingResidents.filter(r => r.id !== residentId));
+      
+      toast({
+        title: "Resident Approved",
+        description: `${resident.username} has been approved successfully.`
+      });
+    }
+  };
+  
+  const handleRejectResident = (residentId: number) => {
+    setPendingResidents(pendingResidents.filter(r => r.id !== residentId));
+    
+    toast({
+      title: "Resident Rejected",
+      description: "The resident request has been rejected."
+    });
+  };
+
   // Remove resident
   const handleRemoveResident = (residentId: number) => {
     setResidents(residents.filter(resident => resident.id !== residentId));
@@ -314,6 +350,66 @@ const CommunityManager: React.FC = () => {
     toast({
       title: "Success",
       description: `Resident status has been updated to ${newStatus}.`
+    });
+  };
+
+  // Handle store package functionality
+  const [showStorePackageDialog, setShowStorePackageDialog] = useState(false);
+  const [packageDetails, setPackageDetails] = useState({
+    recipientPhone: '',
+    recipientName: '',
+    trackingNumber: '',
+    size: 'small',
+    carrier: '',
+    comments: ''
+  });
+  const [selectedLockerId, setSelectedLockerId] = useState<number | null>(null);
+  const [generatedOTP, setGeneratedOTP] = useState<string | null>(null);
+  const [showOTPDialog, setShowOTPDialog] = useState(false);
+
+  // Generate a random 6-digit OTP
+  const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  const handleStorePackage = () => {
+    // Validate form fields
+    if (!packageDetails.recipientPhone || !packageDetails.recipientName || !selectedLockerId) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields and select a locker.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Generate OTP
+    const otp = generateOTP();
+    setGeneratedOTP(otp);
+    
+    // Close store dialog and open OTP dialog
+    setShowStorePackageDialog(false);
+    setShowOTPDialog(true);
+  };
+
+  const handleCloseOTPDialog = () => {
+    setShowOTPDialog(false);
+    setGeneratedOTP(null);
+    setSelectedLockerId(null);
+    
+    // Reset package details form
+    setPackageDetails({
+      recipientPhone: '',
+      recipientName: '',
+      trackingNumber: '',
+      size: 'small',
+      carrier: '',
+      comments: ''
+    });
+    
+    toast({
+      title: "Package Stored",
+      description: "The package has been stored successfully and an OTP has been sent to the recipient."
     });
   };
 
@@ -343,6 +439,11 @@ const CommunityManager: React.FC = () => {
           <TabsTrigger value="residents" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span>Residents</span>
+            {pendingResidents.length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 w-5 flex items-center justify-center p-0">
+                {pendingResidents.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -405,6 +506,10 @@ const CommunityManager: React.FC = () => {
                       <CardTitle>{lockerSystems.find(system => system.id === selectedSystemId)?.name || 'Select a Locker System'}</CardTitle>
                       <CardDescription>{lockerSystems.find(system => system.id === selectedSystemId)?.location} - {lockerSystems.find(system => system.id === selectedSystemId)?.description}</CardDescription>
                     </div>
+                    <Button onClick={() => setShowStorePackageDialog(true)} disabled={!selectedSystemId}>
+                      <Box className="mr-2 h-4 w-4" />
+                      Store Package
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -484,6 +589,65 @@ const CommunityManager: React.FC = () => {
         
         {/* Residents Tab */}
         <TabsContent value="residents">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Pending Resident Requests</CardTitle>
+              <CardDescription>Approve or reject new resident registration requests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="py-3 px-4 text-left">Username</th>
+                      <th className="py-3 px-4 text-left">Block Number</th>
+                      <th className="py-3 px-4 text-left">Phone</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingResidents.map(resident => (
+                      <tr key={resident.id} className="border-b">
+                        <td className="py-3 px-4">{resident.username}</td>
+                        <td className="py-3 px-4">{resident.blockNumber}</td>
+                        <td className="py-3 px-4">{resident.phoneNumber}</td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-green-500 text-green-500 hover:bg-green-50"
+                              onClick={() => handleAcceptResident(resident.id)}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Accept
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-red-500 text-red-500 hover:bg-red-50"
+                              onClick={() => handleRejectResident(resident.id)}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {pendingResidents.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-4 px-4 text-center text-muted-foreground">
+                          No pending resident requests
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -828,6 +992,137 @@ const CommunityManager: React.FC = () => {
               Add Resident
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Store Package Dialog */}
+      <Dialog open={showStorePackageDialog} onOpenChange={setShowStorePackageDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Store New Package</DialogTitle>
+            <DialogDescription>
+              Enter package details and select a locker to store the package.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="recipientPhone">Recipient Phone *</Label>
+              <Input
+                id="recipientPhone"
+                placeholder="9876543210"
+                value={packageDetails.recipientPhone}
+                onChange={(e) => setPackageDetails({...packageDetails, recipientPhone: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="recipientName">Recipient Name *</Label>
+              <Input
+                id="recipientName"
+                placeholder="John Doe"
+                value={packageDetails.recipientName}
+                onChange={(e) => setPackageDetails({...packageDetails, recipientName: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="trackingNumber">Tracking Number</Label>
+              <Input
+                id="trackingNumber"
+                placeholder="ABC123456789"
+                value={packageDetails.trackingNumber}
+                onChange={(e) => setPackageDetails({...packageDetails, trackingNumber: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="packageSize">Package Size</Label>
+              <Select 
+                value={packageDetails.size}
+                onValueChange={(value) => setPackageDetails({...packageDetails, size: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select package size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="carrier">Carrier (Optional)</Label>
+              <Input
+                id="carrier"
+                placeholder="FedEx, UPS, etc."
+                value={packageDetails.carrier}
+                onChange={(e) => setPackageDetails({...packageDetails, carrier: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="comments">Comments (Optional)</Label>
+              <Input
+                id="comments"
+                placeholder="Any special instructions"
+                value={packageDetails.comments}
+                onChange={(e) => setPackageDetails({...packageDetails, comments: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Selected Locker</Label>
+              {selectedLockerId ? (
+                <div className="p-2 border rounded-md bg-muted">
+                  Locker #{selectedLockerId} in {lockerSystems.find(s => s.id === selectedSystemId)?.name}
+                </div>
+              ) : (
+                <div className="p-2 border rounded-md text-muted-foreground">
+                  No locker selected. Please select a locker from the available lockers.
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStorePackageDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleStorePackage} disabled={!selectedLockerId}>
+              Store Package
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* OTP Dialog */}
+      <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Package Stored Successfully</DialogTitle>
+            <DialogDescription>
+              The package for {packageDetails.recipientName} has been stored in Locker #{selectedLockerId}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <div className="bg-muted rounded-lg p-6 text-center">
+              <h3 className="text-sm font-medium mb-2">Collection OTP</h3>
+              <p className="text-3xl font-bold tracking-wider">{generatedOTP}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                This OTP has been sent to the recipient's phone number.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={handleCloseOTPDialog}>
+              Done
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

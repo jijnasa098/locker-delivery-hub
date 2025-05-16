@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/Dashboard"; // Will keep for backward compatibility
+import ResidentDashboard from "./pages/ResidentDashboard"; // New resident dashboard
 import Staff from "./pages/Admin"; // Renamed but still using the same file
 import CommunityManager from "./pages/CommunityManager";
 import Auth from "./pages/Auth";
@@ -22,7 +23,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/resident" replace />} /> {/* Redirect old dashboard to new resident page */}
+          <Route path="/resident" element={<ResidentDashboard />} /> {/* New dedicated resident page */}
           <Route path="/staff" element={<Staff />} /> 
           <Route path="/admin" element={<Navigate to="/staff" replace />} /> {/* Redirect for backward compatibility */}
           <Route path="/community-manager" element={<CommunityManager />} />

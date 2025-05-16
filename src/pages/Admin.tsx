@@ -26,24 +26,26 @@ import {
 import { Package, Box, LogOut, User, Building, Check, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
-// Mock data
+// Mock data - in a real app this would come from API/database
 const mockLockerSystems = [
-  { id: 1, name: 'Main Building', location: 'Lobby', communityId: 'COM001' },
-  { id: 2, name: 'Residence Hall', location: 'First Floor', communityId: 'COM001' },
-  { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM001' }
+  { id: 1, name: 'Main Building', location: 'Lobby', communityId: 'COM001', description: 'Main building lobby lockers' },
+  { id: 2, name: 'Residence Hall', location: 'First Floor', communityId: 'COM001', description: 'Residence hall lockers' },
+  { id: 3, name: 'Gym', location: 'Entrance', communityId: 'COM001', description: 'Gym entrance lockers' }
 ];
 
 const mockLockers = [
   { id: 1, systemId: 1, size: 'small', status: 'available', row: 0, column: 0 },
   { id: 2, systemId: 1, size: 'medium', status: 'available', row: 0, column: 1 },
   { id: 3, systemId: 1, size: 'large', status: 'available', row: 0, column: 2 },
-  { id: 4, systemId: 2, size: 'small', status: 'available', row: 0, column: 0 },
-  { id: 5, systemId: 2, size: 'medium', status: 'available', row: 0, column: 1 }
-];
-
-const mockPendingResidents = [
-  { id: 1, username: 'john_doe', blockNumber: 'A-101', phoneNumber: '9876543210', status: 'pending', communityId: 'COM001' },
-  { id: 2, username: 'jane_smith', blockNumber: 'B-205', phoneNumber: '9876543211', status: 'pending', communityId: 'COM001' }
+  { id: 4, systemId: 1, size: 'small', status: 'available', row: 1, column: 0 },
+  { id: 5, systemId: 1, size: 'medium', status: 'available', row: 1, column: 1 },
+  { id: 6, systemId: 1, size: 'large', status: 'available', row: 1, column: 2 },
+  { id: 7, systemId: 2, size: 'small', status: 'available', row: 0, column: 0 },
+  { id: 8, systemId: 2, size: 'medium', status: 'available', row: 0, column: 1 },
+  { id: 9, systemId: 2, size: 'large', status: 'available', row: 0, column: 2 },
+  { id: 10, systemId: 3, size: 'small', status: 'available', row: 0, column: 0 },
+  { id: 11, systemId: 3, size: 'medium', status: 'available', row: 0, column: 1 },
+  { id: 12, systemId: 3, size: 'large', status: 'available', row: 0, column: 2 }
 ];
 
 // Generate a random 6-digit OTP
@@ -57,7 +59,6 @@ const Staff = () => {
   const [selectedSystemId, setSelectedSystemId] = useState<number | null>(null);
   const [availableLockers, setAvailableLockers] = useState<any[]>([]);
   const [showStorePackageDialog, setShowStorePackageDialog] = useState(false);
-  const [pendingResidents, setPendingResidents] = useState(mockPendingResidents);
   
   // Package details state
   const [packageDetails, setPackageDetails] = useState({
@@ -76,7 +77,7 @@ const Staff = () => {
   const [generatedOTP, setGeneratedOTP] = useState<string | null>(null);
   const [showOTPDialog, setShowOTPDialog] = useState(false);
   
-  // Staff info
+  // Staff info - in a real app this would come from authentication
   const [user] = useState({
     name: 'Staff User',
     role: 'staff'
@@ -125,22 +126,6 @@ const Staff = () => {
     // and send an SMS notification with the OTP to the recipient
   };
 
-  const handleAcceptResident = (residentId: number) => {
-    setPendingResidents(pendingResidents.filter(resident => resident.id !== residentId));
-    toast({
-      title: "Resident Approved",
-      description: "The resident has been approved successfully."
-    });
-  };
-  
-  const handleRejectResident = (residentId: number) => {
-    setPendingResidents(pendingResidents.filter(resident => resident.id !== residentId));
-    toast({
-      title: "Resident Rejected",
-      description: "The resident has been rejected."
-    });
-  };
-
   const handleCloseOTPDialog = () => {
     setShowOTPDialog(false);
     setGeneratedOTP(null);
@@ -175,10 +160,6 @@ const Staff = () => {
               <Package className="h-4 w-4" />
               <span>Package Management</span>
             </TabsTrigger>
-            <TabsTrigger value="residents" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span>Resident Requests</span>
-            </TabsTrigger>
           </TabsList>
           
           {/* Package Management Tab */}
@@ -206,10 +187,19 @@ const Staff = () => {
                         <div>
                           <h3 className="font-medium">{system.name}</h3>
                           <p className="text-sm opacity-80">{system.location}</p>
+                          <p className="text-xs opacity-70">{system.description}</p>
                         </div>
                       </div>
                     </div>
                   ))}
+                  
+                  {mockLockerSystems.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Building className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                      <p>No locker systems available</p>
+                      <p className="text-sm mt-2">Please contact the community manager</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               
@@ -268,68 +258,6 @@ const Staff = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-          
-          {/* Resident Requests Tab */}
-          <TabsContent value="residents">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Resident Requests</CardTitle>
-                <CardDescription>Approve or reject new resident registration requests</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {pendingResidents.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <User className="mx-auto h-12 w-12 mb-4 opacity-30" />
-                    <p>No pending resident requests</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-muted">
-                          <th className="text-left py-3 px-4 text-muted-foreground">Username</th>
-                          <th className="text-left py-3 px-4 text-muted-foreground">Block Number</th>
-                          <th className="text-left py-3 px-4 text-muted-foreground">Phone</th>
-                          <th className="text-right py-3 px-4 text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingResidents.map(resident => (
-                          <tr key={resident.id} className="border-b">
-                            <td className="py-4 px-4">{resident.username}</td>
-                            <td className="py-4 px-4">{resident.blockNumber}</td>
-                            <td className="py-4 px-4">{resident.phoneNumber}</td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="border-green-500 text-green-500 hover:bg-green-50"
-                                  onClick={() => handleAcceptResident(resident.id)}
-                                >
-                                  <Check className="h-4 w-4 mr-1" />
-                                  Accept
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="border-red-500 text-red-500 hover:bg-red-50"
-                                  onClick={() => handleRejectResident(resident.id)}
-                                >
-                                  <X className="h-4 w-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </main>

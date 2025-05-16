@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { User, Building, Phone, Home, UserPlus } from "lucide-react";
+import { User, Building, UserPlus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,36 +14,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: '',
-    communityId: '',
-    phoneNumber: '',
-    blockNumber: '',
-    userRole: 'resident',
-  });
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [communityId, setCommunityId] = useState('');
+  const [blockNumber, setBlockNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [userRole, setUserRole] = useState('resident');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleRoleChange = (value: string) => {
-    setFormData(prev => ({ ...prev, userRole: value }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     // Basic validation
-    if (!formData.username || !formData.password) {
+    if (!username || !password || !confirmPassword) {
       toast({
         title: "Registration Failed",
         description: "Please fill in all required fields.",
@@ -53,27 +43,7 @@ const Register = () => {
       return;
     }
 
-    if (!formData.communityId) {
-      toast({
-        title: "Registration Failed",
-        description: "Please provide a community ID.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (formData.userRole === 'resident' && (!formData.phoneNumber || !formData.blockNumber)) {
-      toast({
-        title: "Registration Failed",
-        description: "Residents must provide block number and phone number.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       toast({
         title: "Registration Failed",
         description: "Passwords do not match.",
@@ -83,16 +53,47 @@ const Register = () => {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    if (!communityId) {
       toast({
-        title: "Registration Pending",
-        description: formData.userRole === 'resident' 
-          ? "Your account request has been submitted and is pending approval from the community manager." 
-          : `Your ${formData.userRole} account has been created.`,
+        title: "Registration Failed",
+        description: "Please provide a community ID.",
+        variant: "destructive",
       });
       setIsSubmitting(false);
-      navigate("/auth"); // Redirect to login page
+      return;
+    }
+
+    if (userRole === 'resident' && (!blockNumber || !phoneNumber)) {
+      toast({
+        title: "Registration Failed",
+        description: "Please provide your block number and phone number.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+      if (userRole === 'resident') {
+        toast({
+          title: "Registration Successful",
+          description: "Your registration request has been submitted and is pending approval by the community manager.",
+        });
+      } else if (userRole === 'manager') {
+        toast({
+          title: "Registration Successful",
+          description: "Your community manager account has been created.",
+        });
+      } else {
+        toast({
+          title: "Registration Successful",
+          description: "Your staff account has been created.",
+        });
+      }
+      
+      navigate("/auth");
+      setIsSubmitting(false);
     }, 1000);
   };
 
@@ -101,52 +102,44 @@ const Register = () => {
       <div className="w-full max-w-md">
         <Card className="border-border shadow-lg">
           <CardHeader className="space-y-1 text-center">
-            {formData.userRole === 'manager' ? (
-              <div className="flex justify-center mb-2">
-                <div className="rounded-full bg-primary p-2">
-                  <Building className="h-6 w-6 text-primary-foreground" />
-                </div>
+            <div className="flex justify-center mb-2">
+              <div className="rounded-full bg-primary p-2">
+                <UserPlus className="h-6 w-6 text-primary-foreground" />
               </div>
-            ) : (
-              <div className="flex justify-center mb-2">
-                <div className="rounded-full bg-primary p-2">
-                  <UserPlus className="h-6 w-6 text-primary-foreground" />
-                </div>
-              </div>
-            )}
+            </div>
             <CardTitle className="text-2xl">Create an account</CardTitle>
             <CardDescription>
-              Register as a resident or community manager
+              Enter your details to create your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="userRole">Register as</Label>
+                <Label htmlFor="userRole">User Type</Label>
                 <Select 
-                  value={formData.userRole} 
-                  onValueChange={handleRoleChange}
+                  value={userRole} 
+                  onValueChange={setUserRole}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account type" />
+                    <SelectValue placeholder="Select user type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="resident">Resident</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="manager">Community Manager</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="communityId">Community ID</Label>
                 <Input 
                   id="communityId" 
-                  name="communityId" 
                   type="text" 
                   placeholder="Enter your community ID" 
+                  value={communityId}
+                  onChange={(e) => setCommunityId(e.target.value)}
                   required
-                  value={formData.communityId} 
-                  onChange={handleChange}
                 />
               </div>
               
@@ -154,28 +147,26 @@ const Register = () => {
                 <Label htmlFor="username">Username</Label>
                 <Input 
                   id="username" 
-                  name="username" 
                   type="text" 
-                  placeholder="johndoe" 
-                  required 
-                  value={formData.username} 
-                  onChange={handleChange} 
+                  placeholder="Enter your username" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
                   autoComplete="username"
                 />
               </div>
 
-              {formData.userRole === 'resident' && (
+              {userRole === 'resident' && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="blockNumber">Block Number</Label>
                     <Input 
                       id="blockNumber" 
-                      name="blockNumber" 
                       type="text" 
-                      placeholder="A-101" 
-                      required 
-                      value={formData.blockNumber} 
-                      onChange={handleChange}
+                      placeholder="E.g., A-101" 
+                      value={blockNumber}
+                      onChange={(e) => setBlockNumber(e.target.value)}
+                      required
                     />
                   </div>
                   
@@ -183,13 +174,11 @@ const Register = () => {
                     <Label htmlFor="phoneNumber">Phone Number</Label>
                     <Input 
                       id="phoneNumber" 
-                      name="phoneNumber" 
-                      type="tel" 
-                      placeholder="+91 9876543210" 
-                      required 
-                      value={formData.phoneNumber} 
-                      onChange={handleChange}
-                      autoComplete="tel"
+                      type="text" 
+                      placeholder="E.g., 9876543210" 
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
                     />
                   </div>
                 </>
@@ -199,39 +188,49 @@ const Register = () => {
                 <Label htmlFor="password">Password</Label>
                 <Input 
                   id="password" 
-                  name="password" 
                   type="password" 
-                  required 
-                  value={formData.password} 
-                  onChange={handleChange}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                   autoComplete="new-password"
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input 
                   id="confirmPassword" 
-                  name="confirmPassword" 
                   type="password" 
-                  required 
-                  value={formData.confirmPassword} 
-                  onChange={handleChange}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
                   autoComplete="new-password"
                 />
               </div>
-
+              
+              {userRole === 'resident' && (
+                <Alert>
+                  <AlertDescription>
+                    <div className="text-sm">
+                      Your registration will need to be approved by the community manager before you can access the system.
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Creating account..." : `Register as ${formData.userRole === 'manager' ? 'Community Manager' : 'Resident'}`}
+                {isSubmitting ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="justify-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/auth" className="text-primary underline-offset-4 hover:underline">
+              <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/auth")}>
                 Sign in
-              </Link>
+              </Button>
             </p>
           </CardFooter>
         </Card>

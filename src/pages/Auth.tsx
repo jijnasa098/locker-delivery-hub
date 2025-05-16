@@ -71,7 +71,7 @@ const Auth = () => {
           title: "Login Successful",
           description: `Welcome back to your Resident dashboard.`,
         });
-        navigate("/dashboard");
+        navigate("/resident"); // Updated to point to new resident dashboard
       } else {
         toast({
           title: "Login Failed",
@@ -190,7 +190,7 @@ const Auth = () => {
           <CardFooter className="justify-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/register")}>
+              <Button variant="link" className="p-0 h-auto font-medium" onClick={() => navigate("/register")}>
                 Sign up
               </Button>
             </p>
