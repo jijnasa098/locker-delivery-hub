@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const Auth = () => {
   const [communityId, setCommunityId] = useState('');
   const [userRole, setUserRole] = useState('resident');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +65,7 @@ const Auth = () => {
           title: "Login Successful",
           description: "Welcome back to the Staff dashboard.",
         });
-        navigate("/admin"); // Using the admin route for staff dashboard
+        navigate("/staff"); 
       } else if (userRole === "resident" && username === "resident" && password === "password") {
         toast({
           title: "Login Successful",
@@ -79,6 +81,10 @@ const Auth = () => {
       }
       setIsSubmitting(false);
     }, 1000);
+  };
+
+  const toggleDemo = () => {
+    setShowDemo(!showDemo);
   };
 
   return (
@@ -158,6 +164,24 @@ const Auth = () => {
                   </Link>
                 </div>
               </div>
+              <Button type="button" variant="outline" className="w-full" onClick={toggleDemo}>
+                {showDemo ? "Hide Demo Credentials" : "Show Demo Credentials"}
+              </Button>
+              
+              {showDemo && (
+                <Alert>
+                  <AlertDescription>
+                    <div className="text-sm space-y-1">
+                      <p className="font-bold">Demo Credentials:</p>
+                      <p>Community ID: <span className="font-medium">COM001</span> (for all users)</p>
+                      <p>Manager: username: <span className="font-medium">manager</span>, password: <span className="font-medium">password</span></p>
+                      <p>Staff: username: <span className="font-medium">staff</span>, password: <span className="font-medium">password</span></p>
+                      <p>Resident: username: <span className="font-medium">resident</span>, password: <span className="font-medium">password</span></p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
@@ -166,9 +190,9 @@ const Auth = () => {
           <CardFooter className="justify-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link to="/register" className="text-primary underline-offset-4 hover:underline">
+              <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/register")}>
                 Sign up
-              </Link>
+              </Button>
             </p>
           </CardFooter>
         </Card>

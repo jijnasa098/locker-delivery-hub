@@ -19,7 +19,6 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    name: '',
     username: '',
     password: '',
     confirmPassword: '',
@@ -44,7 +43,7 @@ const Register = () => {
     setIsSubmitting(true);
 
     // Basic validation
-    if (!formData.name || !formData.username || !formData.password) {
+    if (!formData.username || !formData.password) {
       toast({
         title: "Registration Failed",
         description: "Please fill in all required fields.",
@@ -151,20 +150,6 @@ const Register = () => {
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  type="text" 
-                  placeholder="John Doe" 
-                  required 
-                  value={formData.name} 
-                  onChange={handleChange} 
-                  autoComplete="name"
-                />
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input 
