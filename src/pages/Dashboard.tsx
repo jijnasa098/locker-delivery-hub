@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +33,18 @@ const Dashboard = () => {
   const [enteredOTP, setEnteredOTP] = useState("");
   
   // Get user packages based on user phone number
-  const userPackages = allPackages.filter(pkg => pkg.recipientPhone === user.phone);
+  // Filter packages that match the user's phone number, checking both recipient and recipientPhone properties
+  const userPackages = allPackages.filter(pkg => {
+    // Check if the package has a recipientPhone property that matches user.phone
+    if ('recipientPhone' in pkg && pkg.recipientPhone === user.phone) {
+      return true;
+    }
+    // Check if the package's recipient property matches user.phone (fallback)
+    if (pkg.recipient === user.phone) {
+      return true;
+    }
+    return false;
+  });
   
   // Filter packages by status
   const pendingPackages = userPackages.filter(pkg => pkg.status === 'pending');

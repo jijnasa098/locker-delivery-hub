@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, CSSProperties } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -105,7 +104,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
   };
 
   // Calculate grid container width based on columns
-  const getGridStyle = () => {
+  const getGridStyle = (): CSSProperties => {
     // This will create a responsive grid that adjusts based on column count
     // For larger grids (>10 columns), we'll use smaller locker sizes
     const lockerWidth = columns > 15 ? 40 : columns > 10 ? 50 : 60;
@@ -114,7 +113,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
       gridTemplateColumns: `repeat(${columns}, ${lockerWidth}px)`,
       gap: '4px',
       maxWidth: '100%',
-      overflowX: 'auto',
+      overflowX: 'auto' as const, // Use type assertion to fix the error
     };
   };
 
